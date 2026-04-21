@@ -2,7 +2,7 @@ import { Worker } from "bullmq";
 import IORedis from "ioredis";
 import { ENV } from "../../config/env";
 import { logger } from "../../utils/logger";
-import { Notification, Template } from "../../db/models/index";
+import { BrowserSubscription, Notification, Template } from "../../db/models/index";
 import { renderTemplate } from "../../utils/template";
 import { emailProvider } from "../../providers/email";
 import { sendPush } from "../../providers/push";
@@ -64,8 +64,16 @@ export const notificationWorker = new Worker(
 
       // Send Push Notification
       if (notification.channel === "push") {
-        await sendPush(notification.recipient, {
-          title: template.subject,
+        const subscription = await BrowserSubscription.findOne({
+          where: { endpoint: notification.recipient },
+        });
+
+        if (!subscription) {
+          throw new Error("Subscription not found");
+        }
+
+        await sendPush(subscription, {
+          title: template.subject || "Notification",
           body: renderedBody,
         });
       }
