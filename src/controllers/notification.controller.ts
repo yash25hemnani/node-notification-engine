@@ -1,6 +1,6 @@
 // controllers/notification.controller.ts
 import { Request, Response } from "express";
-import { ApiKey, Notification } from "../db/models";
+import { ApiKey, Notification, Template } from "../db/models";
 import { enqueueNotification } from "../queue/jobs/notification.job";
 import crypto from "crypto";
 import { logger } from "../utils/logger";
@@ -9,10 +9,7 @@ export const createTestKey = async (req: Request, res: Response) => {
   try {
     const rawKey = "my-secret-key";
 
-    const hash = crypto
-      .createHash("sha256")
-      .update(rawKey)
-      .digest("hex");
+    const hash = crypto.createHash("sha256").update(rawKey).digest("hex");
 
     await ApiKey.create({
       name: "test",
@@ -36,7 +33,31 @@ export const createTestKey = async (req: Request, res: Response) => {
   }
 };
 
-export const createTestNotification = async (req: Request, res: Response) => {
+export const createTemplate = async (req: Request, res: Response) => {
+  try {
+    const template = await Template.create({
+      slug: "welcome",
+      channel: "email",
+      subject: "Welcome {{name}}",
+      body: "Hello {{name}}, welcome to our system!"
+    })
+
+    if (template) {
+      return res.json({
+        message: "Template created.",
+      })
+    }
+  } catch (error) {
+    logger.error(error);
+    console.error("Error creating template:", error);
+
+    return res.status(500).json({
+      message: "Failed to create template",
+    });
+  }
+};
+
+export const createNotification = async (req: Request, res: Response) => {
   try {
     const { channel, recipient, templateSlug, data } = req.body;
 
@@ -65,11 +86,14 @@ export const createTestNotification = async (req: Request, res: Response) => {
       status: "queued",
       idempotency_key: idempotencyKey || null,
     });
-
+    
+    logger.info("Notification created")
+    
     // Push to queue
     await enqueueNotification({
       notificationId: notification.id,
     });
+
 
     // Respond
     return res.json({
@@ -77,7 +101,7 @@ export const createTestNotification = async (req: Request, res: Response) => {
       id: notification.id,
     });
   } catch (error) {
-    logger.error(error)
+    logger.error(error);
     console.error("Error creating notification:", error);
 
     return res.status(500).json({

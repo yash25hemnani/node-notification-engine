@@ -6,6 +6,9 @@ import { ENV } from "../config/env";
 export const redis = new IORedis({
   host: ENV.REDIS.HOST,
   port: ENV.REDIS.PORT,
+
+  maxRetriesPerRequest: null, 
+  enableReadyCheck: false,
 });
 
 // Create new bullmq Queue, with redis as the connection

@@ -30,4 +30,14 @@ export const ENV = {
     PUBLIC: process.env.VAPID_PUBLIC_KEY || "",
     PRIVATE: process.env.VAPID_PRIVATE_KEY || "",
   },
+
+  SMTP: {
+    HOST: required("SMTP_HOST"),
+    PORT: required("SMTP_PORT"),
+    USER: required("SMTP_USER"),
+    PASS: required("SMTP_PASS"),
+
+    FROM_NAME: process.env.SMTP_FROM_NAME || "Notifications",
+    FROM_EMAIL: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
+  },
 } as const;

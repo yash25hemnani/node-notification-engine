@@ -1,3 +1,4 @@
+import { logger } from "../../utils/logger";
 import { notificationQueue } from "../index";
 
 interface NotificationJobPayload {
@@ -15,4 +16,5 @@ export async function enqueueNotification(
     },
     removeOnComplete: true,
   });
+  logger.info("Added to queue")
 }

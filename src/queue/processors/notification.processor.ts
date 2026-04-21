@@ -2,11 +2,17 @@ import { Worker } from "bullmq";
 import IORedis from "ioredis";
 import { ENV } from "../../config/env";
 import { logger } from "../../utils/logger";
-import { Notification } from "../../db/models/index";
+import { Notification, Template } from "../../db/models/index";
+import { renderTemplate } from "../../utils/template";
+import { emailProvider } from "../../providers/email";
+import { sendPush } from "../../providers/push";
 
 const connection = new IORedis({
   host: ENV.REDIS.HOST,
   port: ENV.REDIS.PORT,
+
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
 });
 
 export const notificationWorker = new Worker(
@@ -22,19 +28,52 @@ export const notificationWorker = new Worker(
       throw new Error("Notification not found");
     }
 
+    // Check if requested template exists
+    const template = await Template.findOne({
+      where: {
+        slug: notification.template_slug,
+        channel: notification.channel,
+      },
+    });
+
+    if (!template) throw new Error("Template not found");
+
+    // Render the template with data if found
+    const renderedBody = renderTemplate(
+      template.body,
+      notification.data as any,
+    );
+
+    // mark processing
+    notification.status = "processing";
+    await notification.save();
+
     try {
-      // mark processing
-      notification.status = "processing";
-      await notification.save();
+      // Send Email Notification
+      if (notification.channel === "email") {
+        const subject = template.subject
+          ? renderTemplate(template.subject, notification.data as any)
+          : "Notification";
 
-      // Simulate sending
-      await new Promise((r) => setTimeout(r, 1000));
+        await emailProvider.sendEmail(
+          notification.recipient,
+          subject,
+          renderedBody,
+        );
+      }
 
-      // mark success
+      // Send Push Notification
+      if (notification.channel === "push") {
+        await sendPush(notification.recipient, {
+          title: template.subject,
+          body: renderedBody,
+        });
+      }
+
       notification.status = "sent";
       await notification.save();
 
-      logger.info(`Notification sent: ${notificationId}`);
+      logger.info(`Sent: ${notification.id}`);
     } catch (err) {
       notification.status = "failed";
       await notification.save();
@@ -44,5 +83,5 @@ export const notificationWorker = new Worker(
       throw err; // triggers retry
     }
   },
-  { connection }
+  { connection },
 );
