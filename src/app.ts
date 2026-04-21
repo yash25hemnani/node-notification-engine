@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import notificationRoutes from "./routes/notification.routes";
-
+import pushRoutes from "./routes/push.routes"
 
 // Express Setup
 const app = express();
@@ -19,6 +19,7 @@ app.get("/health", (_req, res) => {
 
 // Notification routes
 app.use("/api", notificationRoutes);
+app.use("/api", pushRoutes);
 
 
 export default app;

@@ -1,4 +1,4 @@
-import webpush from "./webpush.js";
+import webpush from "./webpush";
 
 export async function sendPush(
   subscription: any,

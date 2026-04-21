@@ -27,6 +27,7 @@ export const notificationWorker = new Worker(
     if (!notification) {
       throw new Error("Notification not found");
     }
+    logger.info("Trying to send notification 0")
 
     // Check if requested template exists
     const template = await Template.findOne({
@@ -37,16 +38,20 @@ export const notificationWorker = new Worker(
     });
 
     if (!template) throw new Error("Template not found");
+    logger.info("Trying to send notification 1")
 
     // Render the template with data if found
     const renderedBody = renderTemplate(
       template.body,
       notification.data as any,
     );
+    logger.info("Trying to send notification 2")
 
     // mark processing
     notification.status = "processing";
     await notification.save();
+
+    logger.info("Trying to send notification 3")
 
     try {
       // Send Email Notification

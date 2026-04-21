@@ -37,7 +37,7 @@ export const createTemplate = async (req: Request, res: Response) => {
   try {
     const template = await Template.create({
       slug: "welcome",
-      channel: "email",
+      channel: "push",
       subject: "Welcome {{name}}",
       body: "Hello {{name}}, welcome to our system!"
     })

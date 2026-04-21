@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { createSubscription } from "../controllers/push.controller";
+import { createSubscription, listSubscriptions } from "../controllers/push.controller";
 
 const router = Router()
 
 router.post("/subscribe", createSubscription);
+router.get("/list", listSubscriptions);
 
 export default router;

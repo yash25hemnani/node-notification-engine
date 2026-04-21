@@ -32,3 +32,22 @@ export const createSubscription = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const listSubscriptions = async (req: Request, res: Response) => {
+  try {
+    const subscriptions = await BrowserSubscription.findAll();
+
+    if (subscriptions.length > 0) {
+      return res.json({
+        data: subscriptions,
+        success: true,
+      });
+    }
+  } catch (err) {
+    console.error("Couldn't list subscriptions:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

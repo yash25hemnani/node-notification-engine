@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { ENV } from "../../config/env.js";
+import { ENV } from "../../config/env";
 
 webpush.setVapidDetails(
   "mailto:admin@yourapp.com",
