@@ -6,6 +6,8 @@ export type NotificationStatus = "queued" | "processing" | "sent" | "failed";
 interface NotificationAttributes {
   id: string;
   channel: "email" | "push";
+  user_id: string;
+  user_email: string;
   recipient: string;
   template_slug: string;
   data: object;
@@ -24,6 +26,8 @@ export class Notification
 {
   public id!: string;
   public channel!: "email" | "push";
+  public user_id!: string;
+  public user_email!: string;
   public recipient!: string;
   public template_slug!: string;
   public data!: object;
@@ -40,6 +44,14 @@ Notification.init(
     },
     channel: {
       type: DataTypes.ENUM("email", "push"),
+      allowNull: false,
+    },
+    user_id: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    user_email: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
     recipient: {
