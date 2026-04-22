@@ -1,3 +1,5 @@
+import { Request } from "express";
+
 // types/api.ts
 // Interface for Api Response
 export interface ApiError {
@@ -17,4 +19,11 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: ApiError;
   meta?: ApiMeta;
+}
+
+export interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    role: string;
+  };
 }

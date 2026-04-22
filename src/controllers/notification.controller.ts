@@ -10,58 +10,6 @@ import { enqueueNotification } from "../queue/jobs/notification.job";
 import crypto from "crypto";
 import { logger } from "../utils/logger";
 
-export const createTestKey = async (req: Request, res: Response) => {
-  try {
-    const rawKey = "my-secret-key";
-
-    const hash = crypto.createHash("sha256").update(rawKey).digest("hex");
-
-    await ApiKey.create({
-      name: "test",
-      key_hash: hash,
-      scopes: ["email", "push"],
-    });
-
-    console.log("Use this key:", rawKey);
-
-    return res.json({
-      message: "API key created",
-      key: rawKey,
-    });
-  } catch (error: any) {
-    console.error("API KEY ERROR:", error?.parent || error);
-
-    return res.status(500).json({
-      message: "Failed to create API key",
-      error: error.message,
-    });
-  }
-};
-
-export const createTemplate = async (req: Request, res: Response) => {
-  try {
-    const template = await Template.create({
-      slug: "welcome",
-      channel: "push",
-      subject: "Welcome {{name}}",
-      body: "Hello {{name}}, welcome to our system!",
-    });
-
-    if (template) {
-      return res.json({
-        message: "Template created.",
-      });
-    }
-  } catch (error) {
-    logger.error(error);
-    console.error("Error creating template:", error);
-
-    return res.status(500).json({
-      message: "Failed to create template",
-    });
-  }
-};
-
 export const createNotification = async (req: Request, res: Response) => {
   try {
     const { channel, user_id, user_email, templateSlug, data } = req.body;

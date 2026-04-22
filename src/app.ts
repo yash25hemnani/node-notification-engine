@@ -4,6 +4,7 @@ import helmet from "helmet";
 import notificationRoutes from "./routes/notification.routes";
 import subscriptionRoutes from "./routes/subscription.routes";
 import authRoutes from "./routes/auth.routes";
+import keysRoutes from "./routes/keys.routes";
 import cookieParser from "cookie-parser";
 
 // Express Setup
@@ -24,5 +25,6 @@ app.get("/health", (_req, res) => {
 app.use("/api/notification", notificationRoutes);
 app.use("/api/subscripition", subscriptionRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/keys", keysRoutes);
 
 export default app;

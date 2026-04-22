@@ -6,14 +6,17 @@ import { User } from "./User";
 interface ApiKeyAttributes {
   id: string;
   name: string;
-  user_id: string; // 👈 ADD
+  user_id: string;
   key_hash: string;
   scopes: string[];
   is_active: boolean;
+  is_revealed: boolean;
 }
 
-interface ApiKeyCreationAttributes
-  extends Optional<ApiKeyAttributes, "id" | "is_active"> {}
+interface ApiKeyCreationAttributes extends Optional<
+  ApiKeyAttributes,
+  "id" | "is_active" 
+> {}
 
 export class ApiKey
   extends Model<ApiKeyAttributes, ApiKeyCreationAttributes>
@@ -21,12 +24,13 @@ export class ApiKey
 {
   declare id: string;
   declare name: string;
-  declare user_id: string; 
+  declare user_id: string;
   declare key_hash: string;
   declare scopes: string[];
   declare is_active: boolean;
+  declare is_revealed: boolean;
 
-  // association 
+  // association
   declare user?: NonAttribute<User>;
 }
 
@@ -64,10 +68,14 @@ ApiKey.init(
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
+    is_revealed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
   },
   {
     sequelize,
     tableName: "api_keys",
     timestamps: true,
-  }
+  },
 );
