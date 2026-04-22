@@ -1,6 +1,7 @@
 // models/RefreshToken.ts
 import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "../sequelize";
+import { User } from "./User";
 
 interface RefreshTokenAttributes {
   id: string;
@@ -10,15 +11,22 @@ interface RefreshTokenAttributes {
   is_revoked: boolean;
 }
 
-interface CreationAttributes extends Optional<RefreshTokenAttributes, "id" | "is_revoked"> {}
+interface CreationAttributes extends Optional<
+  RefreshTokenAttributes,
+  "id" | "is_revoked"
+> {}
 
-export class RefreshToken extends Model<RefreshTokenAttributes, CreationAttributes>
-  implements RefreshTokenAttributes {
+export class RefreshToken
+  extends Model<RefreshTokenAttributes, CreationAttributes>
+  implements RefreshTokenAttributes
+{
   declare id: string;
   declare user_id: string;
   declare token_hash: string;
   declare expires_at: Date;
   declare is_revoked: boolean;
+
+  declare user?: User;
 }
 
 RefreshToken.init(
@@ -31,6 +39,11 @@ RefreshToken.init(
     user_id: {
       type: DataTypes.UUID,
       allowNull: false,
+      references: {
+        model: "users", // table name
+        key: "id",
+      },
+      onDelete: "CASCADE",
     },
     token_hash: {
       type: DataTypes.STRING,
@@ -45,5 +58,5 @@ RefreshToken.init(
       defaultValue: false,
     },
   },
-  { sequelize, tableName: "refresh_tokens" }
+  { sequelize, tableName: "refresh_tokens" },
 );

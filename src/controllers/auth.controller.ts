@@ -7,6 +7,7 @@ import {
   generateRefreshToken,
   hashToken,
 } from "../utils/tokens";
+import { success } from "zod";
 
 const REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -97,4 +98,95 @@ export const handleLoginOrSignup = async (
       access_token: accessToken,
     },
   });
+};
+
+export const handleRefresh = async (
+  req: Request,
+  res: Response<ApiResponse>,
+) => {
+  // Get refresh token from cookies
+  const refreshToken = req.cookies?.refreshToken;
+
+  const hashed = hashToken(refreshToken);
+
+  // Find token
+  const token = await RefreshToken.findOne({
+    where: { token_hash: hashed, is_revoked: false },
+    include: [{ model: User, as: "user" }],
+  });
+
+  // If not token, then return error
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: "INVALID-TOKEN",
+        message: "Invalid Refresh Token",
+      },
+    });
+  }
+
+  if (new Date() > token?.expires_at) {
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: "EXPIRED_TOKEN",
+        message: "Referesh Token Expired",
+      },
+    });
+  }
+
+  const accessToken = generateAccessToken({
+    id: token.user_id,
+    role: !!token.user ? token.user.role : "",
+  });
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      access_token: accessToken,
+    },
+  });
+};
+
+export const handleLogout = async (
+  req: Request,
+  res: Response<ApiResponse>,
+) => {
+  try {
+    // Get refresh token from cookies
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(200).json({
+        success: true,
+        data: { message: "Already logged out" },
+      });
+    }
+
+    // Revoke the token in database
+    const hashed = hashToken(refreshToken);
+    await RefreshToken.update(
+      { is_revoked: true },
+      { where: { token_hash: hashed } },
+    );
+          
+    // Clear cookie
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false, // true in production
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: { message: "Logged out successfully" },
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+    });
+  }
 };

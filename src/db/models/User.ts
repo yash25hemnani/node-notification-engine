@@ -1,6 +1,7 @@
 // models/User.ts
 import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "../sequelize";
+import { RefreshToken } from "./RefreshToken";
 
 export enum UserRole {
   ADMIN = "admin",
