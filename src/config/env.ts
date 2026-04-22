@@ -13,6 +13,11 @@ function required(key: string): string {
 export const ENV = {
   PORT: Number(process.env.PORT || 4000),
 
+  JWT: {
+    ACCESS_SECRET: required("ACCESS_SECRET"),
+    REFRESH_SECRET: required("REFRESH_SECRET"),
+  },
+
   DB: {
     HOST: required("DB_HOST"),
     PORT: Number(required("DB_PORT")),

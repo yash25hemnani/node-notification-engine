@@ -2,7 +2,9 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import notificationRoutes from "./routes/notification.routes";
-import pushRoutes from "./routes/push.routes"
+import pushRoutes from "./routes/push.routes";
+import authRoutes from "./routes/auth.routes";
+import cookieParser from "cookie-parser";
 
 // Express Setup
 const app = express();
@@ -11,6 +13,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(helmet());
+app.use(cookieParser());
 
 // health check
 app.get("/health", (_req, res) => {
@@ -18,8 +21,8 @@ app.get("/health", (_req, res) => {
 });
 
 // Notification routes
-app.use("/api", notificationRoutes);
-app.use("/api", pushRoutes);
-
+app.use("/api/notification", notificationRoutes);
+app.use("/api/push", pushRoutes);
+app.use("/api/auth", authRoutes);
 
 export default app;
