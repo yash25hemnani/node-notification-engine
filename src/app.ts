@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import notificationRoutes from "./routes/notification.routes";
-import pushRoutes from "./routes/push.routes";
+import subscriptionRoutes from "./routes/subscription.routes";
 import authRoutes from "./routes/auth.routes";
 import cookieParser from "cookie-parser";
 
@@ -22,7 +22,7 @@ app.get("/health", (_req, res) => {
 
 // Notification routes
 app.use("/api/notification", notificationRoutes);
-app.use("/api/push", pushRoutes);
+app.use("/api/subscripition", subscriptionRoutes);
 app.use("/api/auth", authRoutes);
 
 export default app;

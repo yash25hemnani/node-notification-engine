@@ -1,9 +1,12 @@
-import { DataTypes, Model, Optional } from "sequelize";
+// models/ApiKey.ts
+import { DataTypes, Model, Optional, NonAttribute } from "sequelize";
 import { sequelize } from "../sequelize";
+import { User } from "./User";
 
 interface ApiKeyAttributes {
   id: string;
   name: string;
+  user_id: string; // 👈 ADD
   key_hash: string;
   scopes: string[];
   is_active: boolean;
@@ -16,11 +19,15 @@ export class ApiKey
   extends Model<ApiKeyAttributes, ApiKeyCreationAttributes>
   implements ApiKeyAttributes
 {
-  public id!: string;
-  public name!: string;
-  public key_hash!: string;
-  public scopes!: string[];
-  public is_active!: boolean;
+  declare id: string;
+  declare name: string;
+  declare user_id: string; 
+  declare key_hash: string;
+  declare scopes: string[];
+  declare is_active: boolean;
+
+  // association 
+  declare user?: NonAttribute<User>;
 }
 
 ApiKey.init(
@@ -33,6 +40,15 @@ ApiKey.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    user_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: "users",
+        key: "id",
+      },
+      onDelete: "CASCADE",
     },
     key_hash: {
       type: DataTypes.STRING,

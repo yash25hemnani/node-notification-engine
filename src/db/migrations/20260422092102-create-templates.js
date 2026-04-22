@@ -2,43 +2,43 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("users", {
+    await queryInterface.createTable("templates", {
       id: {
         type: Sequelize.UUID,
         primaryKey: true,
         defaultValue: Sequelize.UUIDV4,
       },
-      email: {
-        type: Sequelize.STRING,
-        allowNull: false,
-        unique: true,
-      },
-      password_hash: {
+      slug: {
         type: Sequelize.STRING,
         allowNull: false,
       },
-      role: {
-        type: Sequelize.ENUM("admin", "user"),
+      channel: {
+        type: Sequelize.ENUM("email", "push"),
         allowNull: false,
-        defaultValue: "user",
+      },
+      subject: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      body: {
+        type: Sequelize.TEXT,
+        allowNull: false,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW,
       },
     });
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("users");
+    await queryInterface.dropTable("templates");
     await queryInterface.sequelize.query(
-      'DROP TYPE IF EXISTS "enum_users_role";'
+      'DROP TYPE IF EXISTS "enum_templates_channel";'
     );
   },
 };
