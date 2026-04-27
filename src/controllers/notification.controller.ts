@@ -38,9 +38,9 @@ export const createNotification = async (req: Request, res: Response) => {
       });
 
       if (!existingEndpoint) {
-        throw new Error("Customer not subscribed.")
+        throw new Error("Customer not subscribed.");
       }
-      
+
       recipient = existingEndpoint.endpoint;
     } else {
       recipient = user_email;
@@ -79,3 +79,4 @@ export const createNotification = async (req: Request, res: Response) => {
     });
   }
 };
+

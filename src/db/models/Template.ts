@@ -3,6 +3,7 @@ import { sequelize } from "../sequelize";
 
 interface TemplateAttributes {
   id: string;
+  name: string;
   slug: string;
   channel: "email" | "push";
   subject: string | null;
@@ -10,7 +11,7 @@ interface TemplateAttributes {
 }
 
 interface TemplateCreationAttributes
-  extends Optional<TemplateAttributes, "id"> {}
+  extends Optional<TemplateAttributes, "id" | "subject" | "body"> {}
 
 export class Template extends Model<
   TemplateAttributes,
@@ -18,6 +19,7 @@ export class Template extends Model<
 > {
   declare id: string;
   declare slug: string;
+  declare name: string;
   declare channel: "email" | "push";
   declare subject: string | null;
   declare body: string;
@@ -29,6 +31,10 @@ Template.init(
       type: DataTypes.UUID,
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     slug: {
       type: DataTypes.STRING,
@@ -44,7 +50,7 @@ Template.init(
     },
     body: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
     },
   },
   {

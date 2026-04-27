@@ -2,14 +2,14 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn("api_keys", "is_revealed", {
-      type: Sequelize.BOOLEAN,
+    await queryInterface.changeColumn("users", "username", {
+      type: Sequelize.STRING,
       allowNull: false,
-      defaultValue: false,
+      unique: true,
     });
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.removeColumn("api_keys", "is_revealed");
+    await queryInterface.removeColumn("users", "username");
   },
 };

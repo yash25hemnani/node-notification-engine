@@ -10,6 +10,7 @@ export enum UserRole {
 
 interface UserAttributes {
   id: string;
+  username: string;
   email: string;
   password_hash: string;
   role: UserRole;
@@ -23,6 +24,7 @@ export class User
   implements UserAttributes
 {
   declare id: string;
+  declare username: string;
   declare email: string;
   declare password_hash: string;
   declare role: UserRole;
@@ -34,6 +36,11 @@ User.init(
       type: DataTypes.UUID,
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4,
+    },
+    username: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: false,
     },
     email: {
       type: DataTypes.STRING,

@@ -32,10 +32,11 @@ export async function authMiddleware(
 
     // Verify token
     const decoded = jwt.verify(token, ENV.JWT.ACCESS_SECRET) as TokenPayload;
+    console.log(decoded)
 
     // Attach user to request
     req.user = {
-      id: decoded.id,
+      id: decoded.userId,
       role: decoded.role,
     };
 

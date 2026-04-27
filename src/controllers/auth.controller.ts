@@ -11,82 +11,48 @@ import { success } from "zod";
 
 const REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-export const handleLoginOrSignup = async (
+export const handleSignup = async (
   req: Request,
   res: Response<ApiResponse>,
 ) => {
-  // Handle signup of a new user
-  const { email, password } = req.body;
+  const { email, username, password } = req.body;
 
   const existingUser = await User.findOne({ where: { email } });
 
   if (existingUser) {
-    const valid = await bcrypt.compare(password, existingUser.password_hash);
-
-    if (!valid) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: "INVALID-CREDENTIALS",
-          message: "Invalid credentials provided for existing user.",
-        },
-      });
-    }
-
-    // Login user if password is valid
-    const accessToken = generateAccessToken({
-      id: existingUser.id,
-      role: existingUser.role,
-    });
-
-    const refreshToken = generateRefreshToken();
-
-    await RefreshToken.create({
-      user_id: existingUser.id,
-      token_hash: hashToken(refreshToken),
-      expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRY),
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: REFRESH_TOKEN_EXPIRY,
-    });
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        user: { id: existingUser.id },
-        access_token: accessToken,
+    return res.status(409).json({
+      success: false,
+      error: {
+        code: "USER_ALREADY_EXISTS",
+        message: "User with this email already exists.",
       },
     });
   }
 
-  // If not an existing user, create one with JWT Token
-  // Hash the password
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const newUser = await User.create({ email, password_hash: hashedPassword });
+  const newUser = await User.create({
+    email,
+    username,
+    password_hash: hashedPassword,
+  });
 
-  // Generate access token and sign with id and role
   const accessToken = generateAccessToken({
     id: newUser.id,
     role: newUser.role,
   });
-  // Generate refresh token
+
   const refreshToken = generateRefreshToken();
 
-  // Create an entry in refresh token table
   await RefreshToken.create({
     user_id: newUser.id,
     token_hash: hashToken(refreshToken),
-    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRY),
   });
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: false, // true in production (HTTPS)
+    secure: false,
     sameSite: "lax",
     maxAge: REFRESH_TOKEN_EXPIRY,
   });
@@ -95,6 +61,62 @@ export const handleLoginOrSignup = async (
     success: true,
     data: {
       user: { id: newUser.id },
+      access_token: accessToken,
+    },
+  });
+};
+
+export const handleLogin = async (req: Request, res: Response<ApiResponse>) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ where: { email } });
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      error: {
+        code: "USER_NOT_FOUND",
+        message: "No user found with this email.",
+      },
+    });
+  }
+
+  const valid = await bcrypt.compare(password, user.password_hash);
+
+  if (!valid) {
+    return res.status(403).json({
+      success: false,
+      error: {
+        code: "INVALID_CREDENTIALS",
+        message: "Incorrect password.",
+      },
+    });
+  }
+
+  const accessToken = generateAccessToken({
+    id: user.id,
+    role: user.role,
+  });
+
+  const refreshToken = generateRefreshToken();
+
+  await RefreshToken.create({
+    user_id: user.id,
+    token_hash: hashToken(refreshToken),
+    expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRY),
+  });
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    maxAge: REFRESH_TOKEN_EXPIRY,
+  });
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      user: { id: user.id },
       access_token: accessToken,
     },
   });
@@ -170,7 +192,7 @@ export const handleLogout = async (
       { is_revoked: true },
       { where: { token_hash: hashed } },
     );
-          
+
     // Clear cookie
     res.clearCookie("refreshToken", {
       httpOnly: true,
@@ -182,7 +204,6 @@ export const handleLogout = async (
       success: true,
       data: { message: "Logged out successfully" },
     });
-
   } catch (error) {
     return res.status(500).json({
       success: false,

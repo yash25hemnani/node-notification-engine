@@ -23,13 +23,15 @@ export async function apiKeysMiddleware(
         },
       });
     }
+    
     // Hash api key
+    // Key is in the form of key_abcd....
     const hashedApiKey = crypto
       .createHash("sha256")
-      .update(apiKey)
+      .update(apiKey.split("_")[1])
       .digest("hex");
-    // We will get user from post payload
 
+    // We will get user from post payload
     const { user_id } = req.body;
 
     if (!user_id) {
@@ -45,7 +47,7 @@ export async function apiKeysMiddleware(
     // Find match with user and apikey
     const matchFound = await ApiKey.findOne({
       where: {
-        key_hash: hashedApiKey,
+        key_hash: `key_${hashedApiKey}`,
         user_id: user_id,
         is_active: true,
       },
