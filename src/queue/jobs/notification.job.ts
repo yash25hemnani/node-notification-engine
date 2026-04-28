@@ -1,20 +1,37 @@
 import { logger } from "../../utils/logger";
-import { notificationQueue } from "../index";
+import { emailQueue
+       , pushQueue 
+       } from "../index";
 
 interface NotificationJobPayload {
   notificationId: string;
 }
 
 export async function enqueueNotification(
-  payload: NotificationJobPayload
+  payload: NotificationJobPayload,
+  channel: "email" | "push"
 ) {
-  await notificationQueue.add("send-notification", payload, {
-    attempts: 3,
-    backoff: {
-      type: "exponential",
-      delay: 30000, // 30s
-    },
-    removeOnComplete: true,
-  });
-  logger.info("Added to queue")
+  if (channel === "email") {
+    await emailQueue.add("send-email", payload, {
+      attempts: 3,
+      backoff: {
+        type: "exponential",
+        delay: 30000, // 30s
+      },
+      removeOnComplete: true,
+    });
+    logger.info("Added to queue")
+  }
+  
+  if (channel === "push") {
+    await pushQueue.add("send-push", payload, {
+      attempts: 3,
+      backoff: {
+        type: "exponential",
+        delay: 30000, // 30s
+      },
+      removeOnComplete: true,
+    });
+    logger.info("Added to queue")
+  }
 }

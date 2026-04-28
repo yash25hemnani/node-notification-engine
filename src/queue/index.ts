@@ -12,6 +12,10 @@ export const redis = new IORedis({
 });
 
 // Create new bullmq Queue, with redis as the connection
-export const notificationQueue = new Queue("notifications", {
+export const emailQueue = new Queue("email-queue", {
+  connection: redis,
+});
+
+export const pushQueue = new Queue("push-queue", {
   connection: redis,
 });

@@ -1,9 +1,16 @@
 import { Router } from "express";
-import { createSubscription, listSubscriptions } from "../controllers/subscription.controller";
+import {
+  createInternalSubscription,
+  createSubscription,
+  getUserSubscription,
+} from "../controllers/subscription.controller";
+import { authMiddleware } from "../middleware/auth.middleware";
 
-const router = Router()
+const router = Router();
 
 router.post("/subscribe", createSubscription);
-router.get("/list", listSubscriptions);
+
+router.get("/", authMiddleware, getUserSubscription);
+router.post("/internal-subscribe", authMiddleware, createInternalSubscription);
 
 export default router;

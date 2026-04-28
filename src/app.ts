@@ -8,9 +8,14 @@ import templateRoutes from "./routes/templates.routes"
 import keysRoutes from "./routes/keys.routes";
 import cookieParser from "cookie-parser";
 import listRoutes from "express-list-routes";
+import { createBullBoard } from "@bull-board/api";
+import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
+import { ExpressAdapter } from "@bull-board/express";
 
 
-// Express Setup
+/**
+ * Express Setup
+ */ 
 const app = express();
 
 app.use(express.json());
@@ -35,10 +40,5 @@ app.use("/api/subscripition", subscriptionRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/keys", keysRoutes);
 app.use("/api/templates", templateRoutes);   
-
-
-// after all app.use() calls
-listRoutes(app);
-
 
 export default app;

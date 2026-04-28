@@ -1,10 +1,14 @@
 import { Router } from "express";
 import {
-    createNotification
+    createNotification,
+    sendTestNotification,
+    
 } from "../controllers/notification.controller";
 import { apiKeysMiddleware } from "../middleware/keys.middleware";
 import { validate } from "../middleware/validate.middleware";
 import { notifySchema } from "../schemas/notification.schema";
+import { testNotificationSchema } from "../schemas/testNotification.schema";
+import { authMiddleware } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -17,6 +21,13 @@ router.post(
   validate(notifySchema),
   apiKeysMiddleware,
   createNotification,
+);
+
+router.post(
+  "/test",
+  authMiddleware,
+  validate(testNotificationSchema),
+  sendTestNotification,
 );
 
 export default router;

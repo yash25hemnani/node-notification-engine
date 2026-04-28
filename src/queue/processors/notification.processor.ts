@@ -1,6 +1,5 @@
 import { Worker } from "bullmq";
-import IORedis from "ioredis";
-import { ENV } from "../../config/env";
+import { redis } from "../index";
 import { logger } from "../../utils/logger";
 import {
   BrowserSubscription,
@@ -11,89 +10,107 @@ import { renderTemplate } from "../../utils/template";
 import { emailProvider } from "../../providers/email";
 import { sendPush } from "../../providers/push";
 
-const connection = new IORedis({
-  host: ENV.REDIS.HOST,
-  port: ENV.REDIS.PORT,
-
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-});
-
-export const notificationWorker = new Worker(
-  "notifications",
+// ── Email Worker ──────────────────────────────────────────────────────────────
+export const emailWorker = new Worker(
+  "email-queue",
   async (job) => {
     const { notificationId } = job.data;
 
-    logger.info(`Processing notification ${notificationId}`);
+    logger.info(`Processing email notification ${notificationId}`);
 
     const notification = await Notification.findByPk(notificationId);
+    if (!notification) throw new Error("Notification not found.");
 
-    if (!notification) {
-      throw new Error("Notification not found");
-    }
-
-    // Check if requested template exists
     const template = await Template.findOne({
-      where: {
-        slug: notification.template_slug,
-        channel: notification.channel,
-      },
+      where: { slug: notification.template_slug, channel: "email" },
     });
 
-    if (!template) throw new Error("Template not found");
+    if (!template) throw new Error("Template not found.");
+    if (!template.body || !template.subject)
+      throw new Error("Template details not completed.");
 
-    // Render the template with data if found
+    const renderedBody = renderTemplate(
+      template.body,
+      notification.data as any,
+    );
+    const renderedSubject = renderTemplate(
+      template.subject,
+      notification.data as any,
+    );
+
+    notification.status = "processing";
+    await notification.save();
+
+    try {
+      await emailProvider.sendEmail(
+        notification.recipient,
+        renderedSubject,
+        renderedBody,
+      );
+
+      notification.status = "sent";
+      await notification.save();
+
+      logger.info(`Email sent: ${notification.id}`);
+    } catch (err) {
+      notification.status = "failed";
+      await notification.save();
+      logger.error(err, "Email notification failed");
+      throw err;
+    }
+  },
+  { connection: redis },
+);
+
+// ── Push Worker ───────────────────────────────────────────────────────────────
+export const pushWorker = new Worker(
+  "push-queue",
+  async (job) => {
+    const { notificationId } = job.data;
+
+    logger.info(`Processing push notification ${notificationId}`);
+
+    const notification = await Notification.findByPk(notificationId);
+    if (!notification) throw new Error("Notification not found.");
+
+    const template = await Template.findOne({
+      where: { slug: notification.template_slug, channel: "push" },
+    });
+
+    if (!template) throw new Error("Template not found.");
+    if (!template.body || !template.subject)
+      throw new Error("Template details not completed.");
+
     const renderedBody = renderTemplate(
       template.body,
       notification.data as any,
     );
 
-    // mark processing
+    const subscription = await BrowserSubscription.findOne({
+      where: { endpoint: notification.recipient },
+    });
+
+    if (!subscription) throw new Error("Subscription not found.");
+
     notification.status = "processing";
     await notification.save();
 
     try {
-      // Send Email Notification
-      if (notification.channel === "email") {
-        const subject = template.subject
-          ? renderTemplate(template.subject, notification.data as any)
-          : "Notification";
-
-        await emailProvider.sendEmail(
-          notification.recipient,
-          subject,
-          renderedBody,
-        );
-      }
-
-      // Send Push Notification
-      if (notification.channel === "push") {
-        const subscription = await BrowserSubscription.findOne({
-          where: { endpoint: notification.recipient },
-        });
-
-        if (!subscription) {
-          throw new Error("Subscription not found");
-        }
-
-        await sendPush(subscription, {
-          title: template.subject || "Notification",
-          body: renderedBody,
-        });
-      }
+      await sendPush(subscription, {
+        title: template.subject,
+        body: renderedBody,
+      });
 
       notification.status = "sent";
       await notification.save();
 
-      logger.info(`Sent: ${notification.id}`);
+      logger.info(`Push sent: ${notification.id}`);
     } catch (err) {
       notification.status = "failed";
       await notification.save();
-
-      logger.error(err, "Notification failed");
-
-      throw err; // triggers retry
+      logger.error(err, "Push notification failed");
+      throw err;
     }
   },
-  { connection },
+  { connection: redis },
 );

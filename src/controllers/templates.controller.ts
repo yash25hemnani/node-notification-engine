@@ -2,6 +2,7 @@ import { logger } from "handlebars";
 import { Template } from "../db/models";
 import { ApiResponse, AuthRequest } from "../types/api";
 import { Response } from "express";
+import { Op } from "sequelize";
 
 /**
  * Create Template with name, slug and channel.
@@ -126,7 +127,20 @@ export const getAllTemplates = async (
   res: Response<ApiResponse>,
 ) => {
   try {
-    const allTemplates = await Template.findAll();
+    const { channel, search } = req.query;
+
+    const allTemplates = await Template.findAll({
+      where: {
+        ...(channel ? { channel: channel as string } : {}),
+        ...(search
+          ? {
+              name: {
+                [Op.iLike]: `%${search as string}%`, // case-insensitive search
+              },
+            }
+          : {}),
+      },
+    });
 
     return res.status(200).json({
       success: true,
