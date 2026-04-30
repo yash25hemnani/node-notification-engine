@@ -1,16 +1,13 @@
-import express from "express";
+import cookieParser from "cookie-parser";
 import cors from "cors";
+import express from "express";
 import helmet from "helmet";
+import authRoutes from "./routes/auth.routes";
+import keysRoutes from "./routes/keys.routes";
 import notificationRoutes from "./routes/notification.routes";
 import subscriptionRoutes from "./routes/subscription.routes";
-import authRoutes from "./routes/auth.routes";
-import templateRoutes from "./routes/templates.routes"
-import keysRoutes from "./routes/keys.routes";
-import cookieParser from "cookie-parser";
-import listRoutes from "express-list-routes";
-import { createBullBoard } from "@bull-board/api";
-import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
-import { ExpressAdapter } from "@bull-board/express";
+import templateRoutes from "./routes/templates.routes";
+import dashboardRoutes from "./routes/dashboard.routes";
 
 
 /**
@@ -40,5 +37,6 @@ app.use("/api/subscripition", subscriptionRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/keys", keysRoutes);
 app.use("/api/templates", templateRoutes);   
+app.use("/api/dashboard", dashboardRoutes);   
 
 export default app;

@@ -1,4 +1,5 @@
 import { Request } from "express";
+import { ApiKey } from "../db/models";
 
 // types/api.ts
 // Interface for Api Response
@@ -27,3 +28,8 @@ export interface AuthRequest extends Request {
     role: string;
   };
 }
+
+export interface ApiKeyRequest extends Request {
+  apiKey?: ApiKey;
+}
+

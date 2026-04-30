@@ -14,6 +14,7 @@ import { patchTemplateSchema } from "../schemas/patchTemplate.schema";
 const router = Router();
 
 router.get("/", authMiddleware, getAllTemplates);
+
 router.post(
   "/create",
   authMiddleware,

@@ -1,4 +1,5 @@
 import { ApiKey } from "./ApiKey";
+import { Notification } from "./Notification";
 import { RefreshToken } from "./RefreshToken";
 import { User } from "./User";
 
@@ -7,6 +8,16 @@ RefreshToken.belongsTo(User, { foreignKey: "user_id", as: "user" });
 
 User.hasMany(ApiKey, { foreignKey: "user_id", as: "apiKeys" });
 ApiKey.belongsTo(User, { foreignKey: "user_id", as: "user" });
+
+User.hasMany(Notification, {
+  foreignKey: "created_by",
+  as: "createdNotifications",
+});
+
+Notification.belongsTo(User, {
+  foreignKey: "created_by",
+  as: "creator",
+});
 
 export { ApiKey } from "./ApiKey";
 export { Notification } from "./Notification";

@@ -3,7 +3,6 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { ENV } from "../config/env";
 import { ApiResponse, AuthRequest } from "../types/api";
 
-
 interface TokenPayload extends JwtPayload {
   id: string;
   role: string;
@@ -15,10 +14,12 @@ export async function authMiddleware(
   next: NextFunction,
 ) {
   try {
-    const authHeader = req.headers.authorization;
+    // Since SSE doesn't support custom headers, fallback to query param
+    const token = req.headers.authorization?.startsWith("Bearer ")
+      ? req.headers.authorization.split(" ")[1]
+      : (req.query.token as string | undefined);
 
-    // Validate header format
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return res.status(401).json({
         success: false,
         error: {
@@ -28,11 +29,8 @@ export async function authMiddleware(
       });
     }
 
-    const token = authHeader.split(" ")[1];
-
     // Verify token
     const decoded = jwt.verify(token, ENV.JWT.ACCESS_SECRET) as TokenPayload;
-    console.log(decoded)
 
     // Attach user to request
     req.user = {

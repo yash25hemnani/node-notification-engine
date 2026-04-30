@@ -19,3 +19,4 @@ export const emailQueue = new Queue("email-queue", {
 export const pushQueue = new Queue("push-queue", {
   connection: redis,
 });
+

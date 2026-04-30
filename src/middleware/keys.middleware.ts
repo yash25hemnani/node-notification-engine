@@ -1,11 +1,11 @@
 import { NextFunction, Request, Response } from "express";
-import { ApiResponse, AuthRequest } from "../types/api";
+import { ApiResponse } from "../types/api";
 
 import crypto from "crypto";
 import { ApiKey } from "../db/models";
 
 export async function apiKeysMiddleware(
-  req: AuthRequest,
+  req: Request,
   res: Response<ApiResponse>,
   next: NextFunction,
 ) {

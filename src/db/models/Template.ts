@@ -1,11 +1,13 @@
-import { DataTypes, Model, Optional } from "sequelize";
+import { DataTypes, Model, NonAttribute, Optional } from "sequelize";
 import { sequelize } from "../sequelize";
+import { User } from "./User";
 
 interface TemplateAttributes {
   id: string;
   name: string;
   slug: string;
   channel: "email" | "push";
+  user_id: string;
   subject: string | null;
   body: string;
 }
@@ -23,6 +25,9 @@ export class Template extends Model<
   declare channel: "email" | "push";
   declare subject: string | null;
   declare body: string;
+
+    // association
+    declare user?: NonAttribute<User>;
 }
 
 Template.init(
@@ -43,6 +48,15 @@ Template.init(
     channel: {
       type: DataTypes.ENUM("email", "push"),
       allowNull: false,
+    },
+    user_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: "users",
+        key: "id",
+      },
+      onDelete: "CASCADE",
     },
     subject: {
       type: DataTypes.STRING,

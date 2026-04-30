@@ -2,12 +2,13 @@ import { Request, Response } from "express";
 import { BrowserSubscription, User } from "../db/models";
 import { ApiResponse, AuthRequest } from "../types/api";
 import { logger } from "../utils/logger";
+import { unauthorized } from "../utils/api";
 
 export const createSubscription = async (req: Request, res: Response) => {
   try {
-    const { user_id, user_email, endpoint, keys } = req.body;
+    const { customer_id, customer_email, endpoint, keys } = req.body;
 
-    if (!endpoint || !keys || !user_id) {
+    if (!endpoint || !keys || !customer_id) {
       return res.status(400).json({
         success: false,
         message: "userId, endpoint and keys are required",
@@ -17,14 +18,14 @@ export const createSubscription = async (req: Request, res: Response) => {
     const existing = await BrowserSubscription.findOne({
       where: {
         endpoint,
-        user_id,
+        customer_id,
       },
     });
 
     if (!existing) {
       await BrowserSubscription.create({
-        user_id,
-        user_email,
+        customer_id,
+        customer_email,
         endpoint,
         keys,
       });
@@ -45,15 +46,7 @@ export const createInternalSubscription = async (
   res: Response<ApiResponse>,
 ) => {
   try {
-    if (!req.user) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: "AUTHENTICATION_FAILED",
-          message: "User not authenticated.",
-        },
-      });
-    }
+    if (!req.user) return unauthorized(res)
 
     const { id } = req.user;
 
@@ -98,14 +91,14 @@ export const createInternalSubscription = async (
     const existing = await BrowserSubscription.findOne({
       where: {
         endpoint,
-        user_id: id,
+        customer_id: id,
       },
     });
 
     if (!existing) {
       await BrowserSubscription.create({
-        user_id: id,
-        user_email: user.email,
+        customer_id: id,
+        customer_email: user.email,
         endpoint,
         keys,
       });
@@ -175,7 +168,7 @@ export const getUserSubscription = async (
 
     const subscriptions = await BrowserSubscription.findAll({
       where: {
-        user_id: id,
+        customer_id: id,
       },
     });
 

@@ -1,19 +1,18 @@
-import { logger } from "handlebars";
+
 import { Template } from "../db/models";
 import { ApiResponse, AuthRequest } from "../types/api";
 import { Response } from "express";
 import { Op } from "sequelize";
+import { unauthorized } from "../utils/api";
 
-/**
- * Create Template with name, slug and channel.
- * These things will not be allowed to be patched
- */
 export const createTemplate = async (
   req: AuthRequest,
   res: Response<ApiResponse>,
 ) => {
-  // Create template with slug and channel only
   try {
+    if (!req.user) return unauthorized(res);
+    const { id } = req.user;
+
     const { name, channel } = req.body;
 
     if (!name || !channel)
@@ -28,30 +27,28 @@ export const createTemplate = async (
     const slug = name.toLowerCase().split(" ").join("-");
 
     const isExisting = await Template.findOne({
-      where: { slug, channel },
+      where: { slug, channel, user_id: id },
     });
 
-    if (isExisting) {
+    if (isExisting)
       return res.status(400).json({
         success: false,
         error: {
           code: "SLUG_ALREADY_EXISTS",
-          message: "Given slug aready exists. ",
+          message: "Given slug already exists.",
         },
       });
-    }
 
     const newTemplate = await Template.create({
       name,
       slug,
       channel,
+      user_id: id,
     });
 
     return res.status(201).json({
       success: true,
-      data: {
-        template: newTemplate,
-      },
+      data: { template: newTemplate },
     });
   } catch (error) {
     console.log(error);
@@ -59,20 +56,20 @@ export const createTemplate = async (
       success: false,
       error: {
         code: "INTERNAL_SERVER_ERROR",
-        message: "Internal server error occured.",
+        message: "Internal server error occurred.",
       },
     });
   }
 };
 
-/**
- * Allow patching of only body or subject
- */
 export const patchTemplate = async (
   req: AuthRequest,
   res: Response<ApiResponse>,
 ) => {
   try {
+    if (!req.user) return unauthorized(res);
+    const { id: user_id } = req.user;
+
     const { id } = req.params;
     const { subject, body } = req.body;
 
@@ -85,7 +82,9 @@ export const patchTemplate = async (
         },
       });
 
-    const template = await Template.findOne({ where: { id } });
+    const template = await Template.findOne({
+      where: { id, user_id }, 
+    });
 
     if (!template)
       return res.status(404).json({
@@ -103,9 +102,7 @@ export const patchTemplate = async (
 
     return res.status(200).json({
       success: true,
-      data: {
-        template,
-      },
+      data: { template },
     });
   } catch (error) {
     console.log(error);
@@ -113,40 +110,35 @@ export const patchTemplate = async (
       success: false,
       error: {
         code: "INTERNAL_SERVER_ERROR",
-        message: "Internal server error occured.",
+        message: "Internal server error occurred.",
       },
     });
   }
 };
 
-/**
- * Route to list all templates
- */
 export const getAllTemplates = async (
   req: AuthRequest,
   res: Response<ApiResponse>,
 ) => {
   try {
+    if (!req.user) return unauthorized(res);
+    const { id: user_id } = req.user;
+
     const { channel, search } = req.query;
 
     const allTemplates = await Template.findAll({
       where: {
+        user_id, // ← only their templates
         ...(channel ? { channel: channel as string } : {}),
-        ...(search
-          ? {
-              name: {
-                [Op.iLike]: `%${search as string}%`, // case-insensitive search
-              },
-            }
-          : {}),
+        ...(search ? {
+          name: { [Op.iLike]: `%${search as string}%` },
+        } : {}),
       },
     });
 
     return res.status(200).json({
       success: true,
-      data: {
-        results: allTemplates,
-      },
+      data: { results: allTemplates },
     });
   } catch (error) {
     console.log(error);
@@ -154,27 +146,34 @@ export const getAllTemplates = async (
       success: false,
       error: {
         code: "INTERNAL_SERVER_ERROR",
-        message: "Internal server error occured.",
+        message: "Internal server error occurred.",
       },
     });
   }
 };
 
-export const getTemplateById = async (req: AuthRequest, res: Response) => {
+export const getTemplateById = async (
+  req: AuthRequest,
+  res: Response<ApiResponse>,
+) => {
   try {
+    if (!req.user) return unauthorized(res);
+    const { id: user_id } = req.user;
+
     const { id } = req.params;
 
-    const template = await Template.findOne({ where: { id } });
+    const template = await Template.findOne({
+      where: { id, user_id }, 
+    });
 
-    if (!template) {
+    if (!template)
       return res.status(404).json({
         success: false,
         error: {
           code: "NOT_FOUND",
-          message: "Template not found",
+          message: "Template not found.",
         },
       });
-    }
 
     return res.status(200).json({
       success: true,
@@ -185,31 +184,34 @@ export const getTemplateById = async (req: AuthRequest, res: Response) => {
       success: false,
       error: {
         code: "INTERNAL_SERVER_ERROR",
-        message: "Internal server error",
+        message: "Internal server error.",
       },
     });
   }
 };
 
-/**
- * Delete a template by ID
- */
-
-export const deleteTemplate = async (req: AuthRequest, res: Response) => {
+export const deleteTemplate = async (
+  req: AuthRequest,
+  res: Response<ApiResponse>,
+) => {
   try {
+    if (!req.user) return unauthorized(res);
+    const { id: user_id } = req.user;
+
     const { id } = req.params;
 
-    const template = await Template.findOne({ where: { id } });
+    const template = await Template.findOne({
+      where: { id, user_id }, // ← only their template
+    });
 
-    if (!template) {
+    if (!template)
       return res.status(404).json({
         success: false,
         error: {
           code: "NOT_FOUND",
-          message: "Template not found",
+          message: "Template not found.",
         },
       });
-    }
 
     await template.destroy();
 
@@ -222,7 +224,7 @@ export const deleteTemplate = async (req: AuthRequest, res: Response) => {
       success: false,
       error: {
         code: "INTERNAL_SERVER_ERROR",
-        message: "Internal server error",
+        message: "Internal server error.",
       },
     });
   }

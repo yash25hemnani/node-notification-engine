@@ -14,7 +14,8 @@ import { sendPush } from "../../providers/push";
 export const emailWorker = new Worker(
   "email-queue",
   async (job) => {
-    const { notificationId } = job.data;
+    const { notificationId, internalUser } = job.data;
+    const { internalUserId } = internalUser;
 
     logger.info(`Processing email notification ${notificationId}`);
 
@@ -22,21 +23,30 @@ export const emailWorker = new Worker(
     if (!notification) throw new Error("Notification not found.");
 
     const template = await Template.findOne({
-      where: { slug: notification.template_slug, channel: "email" },
+      where: {
+        slug: notification.template_slug,
+        channel: "email",
+        user_id: internalUserId,
+      },
     });
 
     if (!template) throw new Error("Template not found.");
     if (!template.body || !template.subject)
       throw new Error("Template details not completed.");
 
+    logger.info("Template found.");
+
     const renderedBody = renderTemplate(
       template.body,
       notification.data as any,
     );
+
     const renderedSubject = renderTemplate(
       template.subject,
       notification.data as any,
     );
+
+    logger.info("Body/Subject rendered.");
 
     notification.status = "processing";
     await notification.save();
@@ -66,7 +76,11 @@ export const emailWorker = new Worker(
 export const pushWorker = new Worker(
   "push-queue",
   async (job) => {
-    const { notificationId } = job.data;
+    const { notificationId, internalUser } = job.data;
+    console.log(internalUser);
+
+    const { internalUserId } = internalUser;
+    console.log(internalUserId);
 
     logger.info(`Processing push notification ${notificationId}`);
 
@@ -74,12 +88,18 @@ export const pushWorker = new Worker(
     if (!notification) throw new Error("Notification not found.");
 
     const template = await Template.findOne({
-      where: { slug: notification.template_slug, channel: "push" },
+      where: {
+        slug: notification.template_slug,
+        channel: "push",
+        user_id: internalUserId,
+      },
     });
 
     if (!template) throw new Error("Template not found.");
     if (!template.body || !template.subject)
       throw new Error("Template details not completed.");
+
+    logger.info("Template found")
 
     const renderedBody = renderTemplate(
       template.body,
@@ -91,6 +111,8 @@ export const pushWorker = new Worker(
     });
 
     if (!subscription) throw new Error("Subscription not found.");
+
+    logger.info("Subscription found")
 
     notification.status = "processing";
     await notification.save();
