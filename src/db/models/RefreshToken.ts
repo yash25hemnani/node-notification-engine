@@ -5,15 +5,15 @@ import { User } from "./User";
 
 interface RefreshTokenAttributes {
   id: string;
-  user_id: string;
-  token_hash: string;
-  expires_at: Date;
-  is_revoked: boolean;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  isRevoked: boolean;
 }
 
 interface CreationAttributes extends Optional<
   RefreshTokenAttributes,
-  "id" | "is_revoked"
+  "id" | "isRevoked"
 > {}
 
 export class RefreshToken
@@ -21,10 +21,10 @@ export class RefreshToken
   implements RefreshTokenAttributes
 {
   declare id: string;
-  declare user_id: string;
-  declare token_hash: string;
-  declare expires_at: Date;
-  declare is_revoked: boolean;
+  declare userId: string;
+  declare tokenHash: string;
+  declare expiresAt: Date;
+  declare isRevoked: boolean;
 
   declare user?: User;
 }
@@ -36,7 +36,7 @@ RefreshToken.init(
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4,
     },
-    user_id: {
+    userId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
@@ -45,15 +45,15 @@ RefreshToken.init(
       },
       onDelete: "CASCADE",
     },
-    token_hash: {
+    tokenHash: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    expires_at: {
+    expiresAt: {
       type: DataTypes.DATE,
       allowNull: false,
     },
-    is_revoked: {
+    isRevoked: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },

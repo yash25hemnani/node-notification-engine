@@ -3,8 +3,8 @@ import { sequelize } from "../sequelize";
 
 export class BrowserSubscription extends Model {
   declare id: string;
-  declare customer_id: string;
-  declare customer_email: string;
+  declare customerId: string;
+  declare customerEmail: string;
   declare endpoint: string;
   declare keys: object;
 }
@@ -16,11 +16,11 @@ BrowserSubscription.init(
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4,
     },
-    customer_id: {
+    customerId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    customer_email: {
+    customerEmail: {
       type: DataTypes.STRING,
       allowNull: false,
     },

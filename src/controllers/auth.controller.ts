@@ -34,7 +34,7 @@ export const handleSignup = async (
   const newUser = await User.create({
     email,
     username,
-    password_hash: hashedPassword,
+    passwordHash: hashedPassword,
   });
 
   const accessToken = generateAccessToken({
@@ -45,9 +45,9 @@ export const handleSignup = async (
   const refreshToken = generateRefreshToken();
 
   await RefreshToken.create({
-    user_id: newUser.id,
-    token_hash: hashToken(refreshToken),
-    expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRY),
+    userId: newUser.id,
+    tokenHash: hashToken(refreshToken),
+    expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRY),
   });
 
   res.cookie("refreshToken", refreshToken, {
@@ -81,7 +81,7 @@ export const handleLogin = async (req: Request, res: Response<ApiResponse>) => {
     });
   }
 
-  const valid = await bcrypt.compare(password, user.password_hash);
+  const valid = await bcrypt.compare(password, user.passwordHash);
 
   if (!valid) {
     return res.status(403).json({
@@ -101,9 +101,9 @@ export const handleLogin = async (req: Request, res: Response<ApiResponse>) => {
   const refreshToken = generateRefreshToken();
 
   await RefreshToken.create({
-    user_id: user.id,
-    token_hash: hashToken(refreshToken),
-    expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRY),
+    userId: user.id,
+    tokenHash: hashToken(refreshToken),
+    expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRY),
   });
 
   res.cookie("refreshToken", refreshToken, {
@@ -133,7 +133,7 @@ export const handleRefresh = async (
 
   // Find token
   const token = await RefreshToken.findOne({
-    where: { token_hash: hashed, is_revoked: false },
+    where: { tokenHash: hashed, isRevoked: false },
     include: [{ model: User, as: "user" }],
   });
 
@@ -142,13 +142,13 @@ export const handleRefresh = async (
     return res.status(401).json({
       success: false,
       error: {
-        code: "INVALID-TOKEN",
+        code: "INVALID_TOKEN",
         message: "Invalid Refresh Token",
       },
     });
   }
 
-  if (new Date() > token?.expires_at) {
+  if (new Date() > token?.expiresAt) {
     return res.status(401).json({
       success: false,
       error: {
@@ -159,7 +159,7 @@ export const handleRefresh = async (
   }
 
   const accessToken = generateAccessToken({
-    id: token.user_id,
+    id: token.userId,
     role: !!token.user ? token.user.role : "",
   });
 
@@ -189,8 +189,8 @@ export const handleLogout = async (
     // Revoke the token in database
     const hashed = hashToken(refreshToken);
     await RefreshToken.update(
-      { is_revoked: true },
-      { where: { token_hash: hashed } },
+      { isRevoked: true },
+      { where: { tokenHash: hashed } },
     );
 
     // Clear cookie

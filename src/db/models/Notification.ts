@@ -5,21 +5,21 @@ export type NotificationStatus = "queued" | "processing" | "sent" | "failed";
 
 interface NotificationAttributes {
   id: string;
-  display_id: string;
+  displayId: string;
   channel: "email" | "push";
-  customer_id: string;
-  customer_email: string;
+  customerId: string;
+  customerEmail: string;
   recipient: string;
-  template_slug: string;
+  templateSlug: string;
   data: object;
-  created_by: string;
+  createdBy: string;
   status: NotificationStatus;
-  idempotency_key: string | null;
+  idempotencyKey: string | null;
 }
 
 interface NotificationCreationAttributes extends Optional<
   NotificationAttributes,
-  "id" | "status" | "display_id"
+  "id" | "status" | "displayId"
 > {}
 
 export class Notification
@@ -27,16 +27,16 @@ export class Notification
   implements NotificationAttributes
 {
   public id!: string;
-  public display_id!: string;
+  public displayId!: string;
   public channel!: "email" | "push";
-  public customer_id!: string;
-  public customer_email!: string;
+  public customerId!: string;
+  public customerEmail!: string;
   public recipient!: string;
-  public template_slug!: string;
+  public templateSlug!: string;
   public data!: object;
-  public created_by!: string;
+  public createdBy!: string;
   public status!: NotificationStatus;
-  public idempotency_key!: string | null;
+  public idempotencyKey!: string | null;
 }
 
 Notification.init(
@@ -46,7 +46,7 @@ Notification.init(
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4,
     },
-    display_id: {
+    displayId: {
       type: DataTypes.STRING,
       unique: true,
       allowNull: false,
@@ -55,11 +55,11 @@ Notification.init(
       type: DataTypes.ENUM("email", "push"),
       allowNull: false,
     },
-    customer_id: {
+    customerId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    customer_email: {
+    customerEmail: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -67,7 +67,7 @@ Notification.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    template_slug: {
+    templateSlug: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -75,7 +75,7 @@ Notification.init(
       type: DataTypes.JSONB,
       allowNull: false,
     },
-    created_by: {
+    createdBy: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
@@ -88,7 +88,7 @@ Notification.init(
       type: DataTypes.ENUM("queued", "processing", "sent", "failed"),
       defaultValue: "queued",
     },
-    idempotency_key: {
+    idempotencyKey: {
       type: DataTypes.STRING,
       allowNull: true,
       unique: true,
@@ -111,12 +111,12 @@ Notification.beforeValidate(async (notification) => {
     displayId = `NOTIF-${randomNumber}`;
 
     const existingNotification = await Notification.findOne({
-      where: { display_id: displayId },
+      where: { displayId: displayId },
       attributes: ["id"],
     });
 
     exists = !!existingNotification;
   }
 
-  notification.display_id = displayId!;
+  notification.displayId = displayId!;
 });

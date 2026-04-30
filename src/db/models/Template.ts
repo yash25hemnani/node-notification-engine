@@ -7,7 +7,7 @@ interface TemplateAttributes {
   name: string;
   slug: string;
   channel: "email" | "push";
-  user_id: string;
+  userId: string;
   subject: string | null;
   body: string;
 }
@@ -49,7 +49,7 @@ Template.init(
       type: DataTypes.ENUM("email", "push"),
       allowNull: false,
     },
-    user_id: {
+    userId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {

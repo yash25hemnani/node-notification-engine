@@ -5,15 +5,15 @@ module.exports = {
     // Rename user_id -> customer_id
     await queryInterface.renameColumn(
       "notifications",
-      "user_id",
-      "customer_id",
+      "userId",
+      "customerId",
     );
 
     // Rename user_email -> customer_email
     await queryInterface.renameColumn(
       "notifications",
-      "user_email",
-      "customer_email",
+      "userEmail",
+      "customerEmail",
     );
   },
 
@@ -21,15 +21,15 @@ module.exports = {
     // Rollback customer_id -> user_id
     await queryInterface.renameColumn(
       "notifications",
-      "customer_id",
-      "user_id",
+      "customerId",
+      "userId",
     );
 
     // Rollback customer_email -> user_email
     await queryInterface.renameColumn(
       "notifications",
-      "customer_email",
-      "user_email",
+      "customerEmail",
+      "userEmail",
     );
   },
 };

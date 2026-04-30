@@ -2,13 +2,13 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn("notifications", "display_id", {
+    await queryInterface.addColumn("notifications", "displayId", {
       type: Sequelize.STRING,
       allowNull: false,
       unique: true,
     });
 
-    await queryInterface.addColumn("notifications", "created_by", {
+    await queryInterface.addColumn("notifications", "createdBy", {
       type: Sequelize.UUID,
       allowNull: false,
       references: {
@@ -20,7 +20,7 @@ module.exports = {
   },
 
   async down(queryInterface) {
-    await queryInterface.removeColumn("notifications", "created_by");
-    await queryInterface.removeColumn("notifications", "display_id");
+    await queryInterface.removeColumn("notifications", "createdBy");
+    await queryInterface.removeColumn("notifications", "displayId");
   },
 };

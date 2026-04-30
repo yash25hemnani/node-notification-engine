@@ -7,6 +7,7 @@ import { emailQueue, pushQueue } from "../queue";
 import { ApiResponse, AuthRequest } from "../types/api";
 import { Job, JobType } from "bullmq";
 import { unauthorized } from "../utils/api";
+import { Notification } from "../db/models";
 
 // Store connected clients
 const clients = new Set<Response>();
@@ -157,15 +158,41 @@ export const getQueueJobs = async (
   // Use these fields to:
   // - Fetch notifications for a specific internal user
 
-  const userJobs = jobs.filter((job) => {
-    const {internalUserId} = job.data.internalUser;
-    return internalUserId === id;
+  // Filter jobs by user first
+  const userJobs = jobs.filter(
+    (job) => job.data.internalUser?.internalUserId === id,
+  );
+
+  // Collect all notification IDs in one go
+  const notificationIds = userJobs.map((job) => job.data.notificationId);
+
+  // Single query instead of N queries
+  const notifications = await Notification.findAll({
+    where: { id: notificationIds },
+    attributes: ["id", "displayId", "customerId", "customerEmail"],
+  });
+
+  // Map into a lookup object for O(1) access
+  const notificationMap = Object.fromEntries(
+    notifications.map((n) => [n.id, n]),
+  );
+
+  // Enrich jobs
+  const enrichedJobs = userJobs.map((job) => {
+    const notification = notificationMap[job.data.notificationId];
+    return {
+      ...job.toJSON(),
+      data: {
+        ...job.data,
+        displayId: notification?.displayId ?? null,
+        customerId: notification?.customerId ?? null,
+        customerEmail: notification?.customerEmail ?? null,
+      },
+    };
   });
 
   return res.status(200).json({
     success: true,
-    data: {
-      jobs: userJobs.map((j) => j.toJSON()),
-    },
+    data: { jobs: enrichedJobs },
   });
 };

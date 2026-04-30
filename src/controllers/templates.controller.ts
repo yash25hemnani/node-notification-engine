@@ -27,7 +27,7 @@ export const createTemplate = async (
     const slug = name.toLowerCase().split(" ").join("-");
 
     const isExisting = await Template.findOne({
-      where: { slug, channel, user_id: id },
+      where: { slug, channel, userId: id },
     });
 
     if (isExisting)
@@ -43,7 +43,7 @@ export const createTemplate = async (
       name,
       slug,
       channel,
-      user_id: id,
+      userId: id,
     });
 
     return res.status(201).json({
@@ -68,7 +68,7 @@ export const patchTemplate = async (
 ) => {
   try {
     if (!req.user) return unauthorized(res);
-    const { id: user_id } = req.user;
+    const { id: userId } = req.user;
 
     const { id } = req.params;
     const { subject, body } = req.body;
@@ -83,7 +83,7 @@ export const patchTemplate = async (
       });
 
     const template = await Template.findOne({
-      where: { id, user_id }, 
+      where: { id, userId }, 
     });
 
     if (!template)
@@ -122,13 +122,13 @@ export const getAllTemplates = async (
 ) => {
   try {
     if (!req.user) return unauthorized(res);
-    const { id: user_id } = req.user;
+    const { id: userId } = req.user;
 
     const { channel, search } = req.query;
 
     const allTemplates = await Template.findAll({
       where: {
-        user_id, // ← only their templates
+        userId, // ← only their templates
         ...(channel ? { channel: channel as string } : {}),
         ...(search ? {
           name: { [Op.iLike]: `%${search as string}%` },
@@ -158,12 +158,12 @@ export const getTemplateById = async (
 ) => {
   try {
     if (!req.user) return unauthorized(res);
-    const { id: user_id } = req.user;
+    const { id: userId } = req.user;
 
     const { id } = req.params;
 
     const template = await Template.findOne({
-      where: { id, user_id }, 
+      where: { id, userId }, 
     });
 
     if (!template)
@@ -196,12 +196,12 @@ export const deleteTemplate = async (
 ) => {
   try {
     if (!req.user) return unauthorized(res);
-    const { id: user_id } = req.user;
+    const { id: userId } = req.user;
 
     const { id } = req.params;
 
     const template = await Template.findOne({
-      where: { id, user_id }, // ← only their template
+      where: { id, userId }, // ← only their template
     });
 
     if (!template)

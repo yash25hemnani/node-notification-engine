@@ -8,7 +8,7 @@ module.exports = {
         primaryKey: true,
         defaultValue: Sequelize.UUIDV4,
       },
-      user_id: {
+      userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
@@ -17,15 +17,15 @@ module.exports = {
         },
         onDelete: "CASCADE",
       },
-      token_hash: {
+      tokenHash: {
         type: Sequelize.STRING,
         allowNull: false,
       },
-      expires_at: {
+      expiresAt: {
         type: Sequelize.DATE,
         allowNull: false,
       },
-      is_revoked: {
+      isRevoked: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,
       },

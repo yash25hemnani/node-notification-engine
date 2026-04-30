@@ -6,9 +6,9 @@ import { unauthorized } from "../utils/api";
 
 export const createSubscription = async (req: Request, res: Response) => {
   try {
-    const { customer_id, customer_email, endpoint, keys } = req.body;
+    const { customerId, customerEmail, endpoint, keys } = req.body;
 
-    if (!endpoint || !keys || !customer_id) {
+    if (!endpoint || !keys || !customerId) {
       return res.status(400).json({
         success: false,
         message: "userId, endpoint and keys are required",
@@ -18,14 +18,14 @@ export const createSubscription = async (req: Request, res: Response) => {
     const existing = await BrowserSubscription.findOne({
       where: {
         endpoint,
-        customer_id,
+        customerId,
       },
     });
 
     if (!existing) {
       await BrowserSubscription.create({
-        customer_id,
-        customer_email,
+        customerId,
+        customerEmail,
         endpoint,
         keys,
       });
@@ -97,9 +97,8 @@ export const createInternalSubscription = async (
 
     if (!existing) {
       await BrowserSubscription.create({
-        customer_id: id,
-        customer_email: user.email,
-        endpoint,
+      customerId: id,
+      customerEmail: user.email,
         keys,
       });
 

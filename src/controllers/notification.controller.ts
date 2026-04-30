@@ -17,17 +17,17 @@ export const createNotification = async (
   try {
     if (!req.apiKey) return unauthorized(res);
 
-    const { user_id: internalUserId } = req.apiKey;
+    const { userId: internalUserId } = req.apiKey;
     console.log(req.apiKey)
 
-    const { channel, customer_id, customer_email, templateSlug, data } =
+    const { channel, customerId, customerEmail, templateSlug, data } =
       req.body;
 
     // Check if requested template slug belongs to the user
     const template = await Template.findOne({
       where: {
         slug: templateSlug,
-        user_id: internalUserId,
+        userId: internalUserId,
         channel,
       },
     });
@@ -45,7 +45,7 @@ export const createNotification = async (
 
     if (idempotencyKey) {
       const existing = await Notification.findOne({
-        where: { idempotency_key: idempotencyKey },
+        where: { idempotencyKey: idempotencyKey },
       });
 
       if (existing) {
@@ -63,7 +63,7 @@ export const createNotification = async (
 
     if (channel === "push") {
       const existingEndpoint = await BrowserSubscription.findOne({
-        where: { customer_id },
+        where: { customerId },
       });
 
       if (!existingEndpoint)
@@ -77,19 +77,19 @@ export const createNotification = async (
 
       recipient = existingEndpoint.endpoint;
     } else {
-      recipient = customer_email;
+      recipient = customerEmail;
     }
 
     const notification = await Notification.create({
       channel,
-      customer_id,
-      customer_email,
+      customerId,
+      customerEmail,
       recipient,
-      template_slug: templateSlug,
+      templateSlug: templateSlug,
       data,
       status: "queued",
-      idempotency_key: idempotencyKey || null,
-      created_by: internalUserId
+      idempotencyKey: idempotencyKey || null,
+      createdBy: internalUserId
     });
 
     logger.info("Notification created");
@@ -157,7 +157,7 @@ export const sendTestNotification = async (
     const { channel, templateSlug, data } = req.body;
 
     const template = await Template.findOne({
-      where: { slug: templateSlug, channel, user_id: user.id },
+      where: { slug: templateSlug, channel, userId: user.id },
     });
 
     if (!template)
@@ -182,7 +182,7 @@ export const sendTestNotification = async (
 
     if (idempotencyKey) {
       const existing = await Notification.findOne({
-        where: { idempotency_key: idempotencyKey },
+        where: { idempotencyKey: idempotencyKey },
       });
 
       if (existing) {
@@ -200,7 +200,7 @@ export const sendTestNotification = async (
 
     if (channel === "push") {
       const existingEndpoint = await BrowserSubscription.findOne({
-        where: { customer_id: id },
+        where: { customerId: id },
       });
 
       if (!existingEndpoint)
@@ -219,14 +219,14 @@ export const sendTestNotification = async (
 
     const notification = await Notification.create({
       channel,
-      customer_id: id,
-      customer_email: user.email,
+      customerId: id,
+      customerEmail: user.email,
       recipient,
-      template_slug: templateSlug,
+      templateSlug: templateSlug,
       data,
       status: "queued",
-      idempotency_key: idempotencyKey || null,
-      created_by: id
+      idempotencyKey: idempotencyKey || null,
+      createdBy: id
     });
 
     logger.info("Notification created");

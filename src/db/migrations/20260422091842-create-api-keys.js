@@ -12,7 +12,7 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
       },
-      user_id: {
+      userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
@@ -21,7 +21,7 @@ module.exports = {
         },
         onDelete: "CASCADE",
       },
-      key_hash: {
+      keyHash: {
         type: Sequelize.STRING,
         allowNull: false,
         unique: true,
@@ -31,7 +31,7 @@ module.exports = {
         allowNull: false,
         defaultValue: [],
       },
-      is_active: {
+      isActive: {
         type: Sequelize.BOOLEAN,
         defaultValue: true,
       },

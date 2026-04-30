@@ -32,9 +32,9 @@ export async function apiKeysMiddleware(
       .digest("hex");
 
     // We will get user from post payload
-    const { user_id } = req.body;
+    const { userId } = req.body;
 
-    if (!user_id) {
+    if (!userId) {
       return res.status(401).json({
         success: false,
         error: {
@@ -47,9 +47,9 @@ export async function apiKeysMiddleware(
     // Find match with user and apikey
     const matchFound = await ApiKey.findOne({
       where: {
-        key_hash: `key_${hashedApiKey}`,
-        user_id: user_id,
-        is_active: true,
+        keyHash: `key_${hashedApiKey}`,
+        userId: userId,
+        isActive: true,
       },
     });
 

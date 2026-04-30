@@ -6,16 +6,16 @@ import { User } from "./User";
 interface ApiKeyAttributes {
   id: string;
   name: string;
-  user_id: string;
-  key_hash: string;
+  userId: string;
+  keyHash: string;
   scopes: string[];
-  is_active: boolean;
-  is_revealed: boolean;
+  isActive: boolean;
+  isRevealed: boolean;
 }
 
 interface ApiKeyCreationAttributes extends Optional<
   ApiKeyAttributes,
-  "id" | "is_active" 
+  "id" | "isActive" 
 > {}
 
 export class ApiKey
@@ -24,11 +24,11 @@ export class ApiKey
 {
   declare id: string;
   declare name: string;
-  declare user_id: string;
-  declare key_hash: string;
+  declare userId: string;
+  declare keyHash: string;
   declare scopes: string[];
-  declare is_active: boolean;
-  declare is_revealed: boolean;
+  declare isActive: boolean;
+  declare isRevealed: boolean;
 
   // association
   declare user?: NonAttribute<User>;
@@ -45,7 +45,7 @@ ApiKey.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    user_id: {
+    userId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
@@ -54,7 +54,7 @@ ApiKey.init(
       },
       onDelete: "CASCADE",
     },
-    key_hash: {
+    keyHash: {
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
@@ -64,11 +64,11 @@ ApiKey.init(
       allowNull: false,
       defaultValue: [],
     },
-    is_active: {
+    isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
-    is_revealed: {
+    isRevealed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },

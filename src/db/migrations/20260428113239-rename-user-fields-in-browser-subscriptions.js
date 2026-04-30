@@ -4,28 +4,28 @@ module.exports = {
   async up(queryInterface) {
     await queryInterface.renameColumn(
       "browser_subscriptions",
-      "user_id",
-      "customer_id",
+      "userId",
+      "customerId",
     );
 
     await queryInterface.renameColumn(
       "browser_subscriptions",
-      "user_email",
-      "customer_email",
+      "userEmail",
+      "customerEmail",
     );
   },
 
   async down(queryInterface) {
     await queryInterface.renameColumn(
       "browser_subscriptions",
-      "customer_id",
-      "user_id",
+      "customerId",
+      "userId",
     );
 
     await queryInterface.renameColumn(
       "browser_subscriptions",
-      "customer_email",
-      "user_email",
+      "customerEmail",
+      "userEmail",
     );
   },
 };

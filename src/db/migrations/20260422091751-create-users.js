@@ -8,12 +8,17 @@ module.exports = {
         primaryKey: true,
         defaultValue: Sequelize.UUIDV4,
       },
+      username: {
+        type: Sequelize.STRING,
+        unique: true,
+        allowNull: false,
+      },
       email: {
         type: Sequelize.STRING,
         unique: true,
         allowNull: false,
       },
-      password_hash: {
+      passwordHash: {
         type: Sequelize.STRING,
         allowNull: false,
       },
@@ -36,7 +41,7 @@ module.exports = {
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable("users");
     await queryInterface.sequelize.query(
-      'DROP TYPE IF EXISTS "enum_users_role";'
+      'DROP TYPE IF EXISTS "enum_users_role";',
     );
   },
 };

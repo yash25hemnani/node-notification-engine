@@ -24,9 +24,9 @@ export const emailWorker = new Worker(
 
     const template = await Template.findOne({
       where: {
-        slug: notification.template_slug,
+        slug: notification.templateSlug,
         channel: "email",
-        user_id: internalUserId,
+        userId: internalUserId,
       },
     });
 
@@ -89,9 +89,9 @@ export const pushWorker = new Worker(
 
     const template = await Template.findOne({
       where: {
-        slug: notification.template_slug,
+        slug: notification.templateSlug,
         channel: "push",
-        user_id: internalUserId,
+        userId: internalUserId,
       },
     });
 

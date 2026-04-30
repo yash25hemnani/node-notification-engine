@@ -25,7 +25,7 @@ export const getApiKey = async (
   console.log(id);
 
   const apiKey = await ApiKey.findOne({
-    where: { user_id: id },
+    where: { userId: id },
     attributes: ["id", "name", "scopes", "createdAt"], // ← never return key_hash
   });
 
@@ -66,7 +66,7 @@ export const generateApiKey = async (
   // Check if a key already exists for this user
   const existingApiKey = await ApiKey.findOne({
     where: {
-      user_id: id,
+      userId: id,
     },
   });
 
@@ -89,11 +89,11 @@ export const generateApiKey = async (
 
   // Create a new api key
   const newApiKey = await ApiKey.create({
-    user_id: id,
-    key_hash: `key_${keyHash}`,
+    userId: id,
+    keyHash: `key_${keyHash}`,
     name: name,
     scopes: [],
-    is_revealed: true, // Can only view key once
+    isRevealed: true, // Can only view key once
   });
 
   // Send to user, allow only once
@@ -129,7 +129,7 @@ export const rotateApiKey = async (
   // Check if a key already exists for this user
   const existingApiKey = await ApiKey.findOne({
     where: {
-      user_id: id,
+      userId: id,
     },
   });
 
@@ -155,11 +155,11 @@ export const rotateApiKey = async (
 
   // Create a new api key
   const newApiKey = await ApiKey.create({
-    user_id: id,
-    key_hash: `key_${keyHash}`,
+    userId: id,
+    keyHash: `key_${keyHash}`,
     name: name,
     scopes: [],
-    is_revealed: true, // Cnan only view key once
+    isRevealed: true, // Can only view key once
   });
 
   // Send to user, allow only once
@@ -191,7 +191,7 @@ export const deleteApiKey = async (
 
   try {
     const apiKey = await ApiKey.findOne({
-      where: { id, user_id: req.user.id },
+      where: { id, userId: req.user.id },
     });
 
     if (!apiKey) {

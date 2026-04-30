@@ -12,11 +12,11 @@ module.exports = {
         type: Sequelize.ENUM("email", "push"),
         allowNull: false,
       },
-      user_id: {
+      userId: {
         type: Sequelize.STRING,
         allowNull: false,
       },
-      user_email: {
+      userEmail: {
         type: Sequelize.STRING,
         allowNull: false,
       },
@@ -24,7 +24,7 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
       },
-      template_slug: {
+      templateSlug: {
         type: Sequelize.STRING,
         allowNull: false,
       },
@@ -36,7 +36,7 @@ module.exports = {
         type: Sequelize.ENUM("queued", "processing", "sent", "failed"),
         defaultValue: "queued",
       },
-      idempotency_key: {
+      idempotencyKey: {
         type: Sequelize.STRING,
         allowNull: true,
         unique: true,

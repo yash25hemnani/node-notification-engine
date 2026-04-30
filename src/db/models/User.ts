@@ -12,7 +12,7 @@ interface UserAttributes {
   id: string;
   username: string;
   email: string;
-  password_hash: string;
+  passwordHash: string;
   role: UserRole;
 }
 
@@ -26,7 +26,7 @@ export class User
   declare id: string;
   declare username: string;
   declare email: string;
-  declare password_hash: string;
+  declare passwordHash: string;
   declare role: UserRole;
 }
 
@@ -47,7 +47,7 @@ User.init(
       unique: true,
       allowNull: false,
     },
-    password_hash: {
+    passwordHash: {
       type: DataTypes.STRING,
       allowNull: false,
     },
