@@ -1,17 +1,17 @@
 import { Router } from "express";
-import { validate } from "../middleware/validate.middleware";
-import { createTemplateSchema } from "../schemas/createTemplate.schema";
-import { authMiddleware } from "../middleware/auth.middleware";
 import {
   createTemplate,
   deleteTemplate,
   getAllTemplates,
   getTemplateById,
-  patchTemplate,
+  patchTemplate
 } from "../controllers/templates.controller";
+import { authMiddleware } from "../middleware/auth.middleware";
+import { validate } from "../middleware/validate.middleware";
+import { createTemplateSchema } from "../schemas/createTemplate.schema";
 import { patchTemplateSchema } from "../schemas/patchTemplate.schema";
 
-const router = Router();
+const router = Router({ mergeParams: true }) 
 
 router.get("/", authMiddleware, getAllTemplates);
 
@@ -22,6 +22,7 @@ router.post(
   createTemplate,
 );
 
+// Template routes
 router.delete("/:id", authMiddleware, deleteTemplate)
 router.get("/:id", authMiddleware, getTemplateById);
 router.patch("/:id", authMiddleware, validate(patchTemplateSchema), patchTemplate)

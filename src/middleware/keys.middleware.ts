@@ -31,24 +31,11 @@ export async function apiKeysMiddleware(
       .update(apiKey.split("_")[1])
       .digest("hex");
 
-    // We will get user from post payload
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: "UNAUTHORIZED",
-          message: "User not authenticated",
-        },
-      });
-    }
 
     // Find match with user and apikey
     const matchFound = await ApiKey.findOne({
       where: {
         keyHash: `key_${hashedApiKey}`,
-        userId: userId,
         isActive: true,
       },
     });

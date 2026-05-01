@@ -22,6 +22,10 @@ export const emailWorker = new Worker(
     const notification = await Notification.findByPk(notificationId);
     if (!notification) throw new Error("Notification not found.");
 
+    // Set job Id
+    notification.jobId = job.id ?? "";
+    await notification.save();
+
     const template = await Template.findOne({
       where: {
         slug: notification.templateSlug,
@@ -48,7 +52,7 @@ export const emailWorker = new Worker(
 
     logger.info("Body/Subject rendered.");
 
-    notification.status = "processing";
+    notification.status = "active";
     await notification.save();
 
     try {
@@ -58,12 +62,15 @@ export const emailWorker = new Worker(
         renderedBody,
       );
 
-      notification.status = "sent";
+      notification.status = "completed";
+      notification.attemptsMade = job.attemptsMade;
       await notification.save();
 
       logger.info(`Email sent: ${notification.id}`);
-    } catch (err) {
+    } catch (err: any) {
       notification.status = "failed";
+      notification.attemptsMade = job.attemptsMade;
+      notification.failedReason = err.message;
       await notification.save();
       logger.error(err, "Email notification failed");
       throw err;
@@ -87,6 +94,9 @@ export const pushWorker = new Worker(
     const notification = await Notification.findByPk(notificationId);
     if (!notification) throw new Error("Notification not found.");
 
+    notification.jobId = job.id ?? "";
+    await notification.save();
+
     const template = await Template.findOne({
       where: {
         slug: notification.templateSlug,
@@ -99,7 +109,7 @@ export const pushWorker = new Worker(
     if (!template.body || !template.subject)
       throw new Error("Template details not completed.");
 
-    logger.info("Template found")
+    logger.info("Template found");
 
     const renderedBody = renderTemplate(
       template.body,
@@ -112,9 +122,9 @@ export const pushWorker = new Worker(
 
     if (!subscription) throw new Error("Subscription not found.");
 
-    logger.info("Subscription found")
+    logger.info("Subscription found");
 
-    notification.status = "processing";
+    notification.status = "active";
     await notification.save();
 
     try {
@@ -123,12 +133,15 @@ export const pushWorker = new Worker(
         body: renderedBody,
       });
 
-      notification.status = "sent";
+      notification.status = "completed";
+      notification.attemptsMade = job.attemptsMade;
       await notification.save();
 
       logger.info(`Push sent: ${notification.id}`);
-    } catch (err) {
+    } catch (err: any) {
       notification.status = "failed";
+      notification.attemptsMade = job.attemptsMade;
+      notification.failedReason = err.message;
       await notification.save();
       logger.error(err, "Push notification failed");
       throw err;

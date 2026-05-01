@@ -1,14 +1,16 @@
 import { Router } from "express";
 import {
-    createNotification,
-    sendTestNotification,
-    
+  createNotification,
+  deleteNotification,
+  getQueueNotifications,
+  sendTestNotification,
 } from "../controllers/notification.controller";
 import { apiKeysMiddleware } from "../middleware/keys.middleware";
 import { validate } from "../middleware/validate.middleware";
 import { notifySchema } from "../schemas/notification.schema";
 import { testNotificationSchema } from "../schemas/testNotification.schema";
 import { authMiddleware } from "../middleware/auth.middleware";
+import { prodDeleteGuardMiddleware } from "../middleware/prod.middleware";
 
 const router = Router();
 
@@ -29,5 +31,18 @@ router.post(
   validate(testNotificationSchema),
   sendTestNotification,
 );
+
+router.delete(
+  "/:notificationId",
+  authMiddleware,
+  prodDeleteGuardMiddleware,
+  deleteNotification,
+);
+
+router.get(
+  "/queue/jobs",
+  authMiddleware,
+  getQueueNotifications
+)
 
 export default router;

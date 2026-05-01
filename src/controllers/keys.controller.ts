@@ -102,7 +102,7 @@ export const generateApiKey = async (
     data: {
       id: newApiKey.id,
       name: newApiKey.name,
-      api_key: `key_${rawKey}`,
+      apiKey: `key_${rawKey}`,
     },
   });
 };
@@ -168,7 +168,7 @@ export const rotateApiKey = async (
     data: {
       id: newApiKey.id,
       name: newApiKey.name,
-      api_key: `key_${rawKey}`,
+      apiKey: `key_${rawKey}`,
     },
   });
 };

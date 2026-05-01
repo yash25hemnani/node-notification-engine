@@ -33,8 +33,8 @@ module.exports = {
         allowNull: false,
       },
       status: {
-        type: Sequelize.ENUM("queued", "processing", "sent", "failed"),
-        defaultValue: "queued",
+        type: Sequelize.ENUM("waiting", "active", "completed", "failed"),
+        defaultValue: "waiting",
       },
       idempotencyKey: {
         type: Sequelize.STRING,

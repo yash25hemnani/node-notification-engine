@@ -1,25 +1,28 @@
 import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "../sequelize";
 
-export type NotificationStatus = "queued" | "processing" | "sent" | "failed";
+export type NotificationStatus = "waiting" | "active" | "completed" | "failed";
 
 interface NotificationAttributes {
   id: string;
-  displayId: string;
+  displayId: string; 
+  jobId: string;
   channel: "email" | "push";
   customerId: string;
   customerEmail: string;
   recipient: string;
   templateSlug: string;
-  data: object;
+  data: object | null;
   createdBy: string;
   status: NotificationStatus;
+  attemptsMade: number | null;
+  failedReason: string | null;
   idempotencyKey: string | null;
 }
 
 interface NotificationCreationAttributes extends Optional<
   NotificationAttributes,
-  "id" | "status" | "displayId"
+  "id" | "status" | "displayId" | "attemptsMade" | "failedReason" | "jobId"
 > {}
 
 export class Notification
@@ -28,14 +31,17 @@ export class Notification
 {
   public id!: string;
   public displayId!: string;
+  public jobId!: string;
   public channel!: "email" | "push";
   public customerId!: string;
   public customerEmail!: string;
   public recipient!: string;
   public templateSlug!: string;
-  public data!: object;
+  public data!: object | null;
   public createdBy!: string;
   public status!: NotificationStatus;
+  public attemptsMade!: number | null;
+  public failedReason!: string | null;
   public idempotencyKey!: string | null;
 }
 
@@ -50,6 +56,10 @@ Notification.init(
       type: DataTypes.STRING,
       unique: true,
       allowNull: false,
+    },
+    jobId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     channel: {
       type: DataTypes.ENUM("email", "push"),
@@ -73,7 +83,7 @@ Notification.init(
     },
     data: {
       type: DataTypes.JSONB,
-      allowNull: false,
+      allowNull: true,
     },
     createdBy: {
       type: DataTypes.UUID,
@@ -85,8 +95,17 @@ Notification.init(
       onDelete: "CASCADE",
     },
     status: {
-      type: DataTypes.ENUM("queued", "processing", "sent", "failed"),
-      defaultValue: "queued",
+      type: DataTypes.ENUM("waiting", "active", "completed", "failed"),
+      defaultValue: "waiting",
+    },
+    attemptsMade: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
+    },
+    failedReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     idempotencyKey: {
       type: DataTypes.STRING,
@@ -100,7 +119,6 @@ Notification.init(
     timestamps: true,
   },
 );
-
 
 Notification.beforeValidate(async (notification) => {
   let displayId: string;

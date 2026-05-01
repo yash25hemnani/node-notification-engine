@@ -18,10 +18,9 @@ export const createNotification = async (
     if (!req.apiKey) return unauthorized(res);
 
     const { userId: internalUserId } = req.apiKey;
-    console.log(req.apiKey)
+    console.log(req.apiKey);
 
-    const { channel, customerId, customerEmail, templateSlug, data } =
-      req.body;
+    const { channel, customerId, customerEmail, templateSlug, data } = req.body;
 
     // Check if requested template slug belongs to the user
     const template = await Template.findOne({
@@ -62,11 +61,11 @@ export const createNotification = async (
     let recipient;
 
     if (channel === "push") {
-      const existingEndpoint = await BrowserSubscription.findOne({
+      const subscriptions = await BrowserSubscription.findAll({
         where: { customerId },
       });
 
-      if (!existingEndpoint)
+      if (!subscriptions.length)
         return res.status(404).json({
           success: false,
           error: {
@@ -75,7 +74,41 @@ export const createNotification = async (
           },
         });
 
-      recipient = existingEndpoint.endpoint;
+      const notifications = await Promise.all(
+        subscriptions.map((sub) =>
+          Notification.create({
+            channel,
+            customerId,
+            customerEmail,
+            recipient: sub.endpoint, 
+            templateSlug,
+            data,
+            status: "waiting",
+            idempotencyKey: idempotencyKey || null,
+            createdBy: internalUserId,
+          }),
+        ),
+      );
+
+      await Promise.all(
+        notifications.map((notification) =>
+          enqueueNotification(
+            {
+              notificationId: notification.id,
+              internalUser: { internalUserId },
+            },
+            channel,
+          ),
+        ),
+      );
+
+      return res.status(201).json({
+        success: true,
+        data: {
+          message: "Notifications queued",
+          ids: notifications.map((n) => n.id),
+        },
+      });
     } else {
       recipient = customerEmail;
     }
@@ -87,9 +120,9 @@ export const createNotification = async (
       recipient,
       templateSlug: templateSlug,
       data,
-      status: "queued",
+      status: "waiting",
       idempotencyKey: idempotencyKey || null,
-      createdBy: internalUserId
+      createdBy: internalUserId,
     });
 
     logger.info("Notification created");
@@ -97,7 +130,7 @@ export const createNotification = async (
     await enqueueNotification(
       { notificationId: notification.id, internalUser: { internalUserId } },
       channel,
-    ); // ← channel passed
+    );
 
     return res.status(201).json({
       success: true,
@@ -224,9 +257,9 @@ export const sendTestNotification = async (
       recipient,
       templateSlug: templateSlug,
       data,
-      status: "queued",
+      status: "waiting",
       idempotencyKey: idempotencyKey || null,
-      createdBy: id
+      createdBy: id,
     });
 
     logger.info("Notification created");
@@ -239,7 +272,7 @@ export const sendTestNotification = async (
       channel,
     );
 
-    console.log(user.id)
+    console.log(user.id);
 
     return res.status(201).json({
       success: true,
@@ -255,6 +288,117 @@ export const sendTestNotification = async (
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "Internal server error occurred.",
+      },
+    });
+  }
+};
+
+// Delete a notification from the table as well as the queue
+export const deleteNotification = async (
+  req: AuthRequest,
+  res: Response<ApiResponse>,
+) => {
+  try {
+    if (!req.user) return unauthorized(res);
+
+    const { notificationId } = req.params;
+    if (!notificationId)
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "BAD_REQUST",
+          message: "Notification ID not provided",
+        },
+      });
+
+    const existingNotification = await Notification.findOne({
+      where: { id: notificationId },
+    });
+
+    if (!existingNotification)
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Notification not found",
+        },
+      });
+
+    await existingNotification.destroy();
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: notificationId,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unknown error occured.",
+      },
+    });
+  }
+};
+
+// Getting jobs for a queue
+export const getQueueNotifications = async (
+  req: AuthRequest,
+  res: Response<ApiResponse>,
+) => {
+  try {
+    if (!req.user) return unauthorized(res);
+    const { id } = req.user;
+
+    const { queue, state } = req.query;
+
+    if (!queue)
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "NO_QUEUE_SPECIFIED",
+          message: "Specify a queue to request data.",
+        },
+      });
+
+    const where = {
+      createdBy: id,
+      channel: queue as string,
+      ...(state && state !== "all" ? { status: state as string } : {}),
+    };
+
+    const notifications = await Notification.findAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      limit: 20,
+      attributes: [
+        "id",
+        "displayId",
+        "channel",
+        "status",
+        "customerId",
+        "customerEmail",
+        "templateSlug",
+        "attemptsMade",
+        "failedReason",
+        "createdAt",
+      ],
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: { jobs: notifications },
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unknown error occured.",
       },
     });
   }

@@ -4,6 +4,8 @@ import { ApiResponse, AuthRequest } from "../types/api";
 import { Response } from "express";
 import { Op } from "sequelize";
 import { unauthorized } from "../utils/api";
+import { TemplateAttachment } from "../db/models/TemplateAttachment";
+import { UploadedFile } from "../db/models/UploadedFile";
 
 export const createTemplate = async (
   req: AuthRequest,

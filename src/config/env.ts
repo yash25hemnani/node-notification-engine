@@ -12,6 +12,7 @@ function required(key: string): string {
 
 export const ENV = {
   PORT: Number(process.env.PORT || 4000),
+  NODE_ENV: required("NODE_ENV"),
 
   JWT: {
     ACCESS_SECRET: required("ACCESS_SECRET"),

@@ -46,7 +46,7 @@ export const createInternalSubscription = async (
   res: Response<ApiResponse>,
 ) => {
   try {
-    if (!req.user) return unauthorized(res)
+    if (!req.user) return unauthorized(res);
 
     const { id } = req.user;
 
@@ -91,15 +91,16 @@ export const createInternalSubscription = async (
     const existing = await BrowserSubscription.findOne({
       where: {
         endpoint,
-        customer_id: id,
+        customerId: id,
       },
     });
 
     if (!existing) {
       await BrowserSubscription.create({
-      customerId: id,
-      customerEmail: user.email,
+        customerId: id,
+        customerEmail: user.email,
         keys,
+        endpoint,
       });
 
       logger.info("Browser subscription created");
@@ -111,6 +112,65 @@ export const createInternalSubscription = async (
         message: existing
           ? "Subscription already exists"
           : "Subscription created successfully",
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error occurred.",
+      },
+    });
+  }
+};
+
+export const removeInternalSubscription = async (
+  req: AuthRequest,
+  res: Response<ApiResponse>,
+) => {
+  try {
+    if (!req.user) return unauthorized(res);
+
+    const { id } = req.user;
+
+    const { endpoint } = req.body;
+
+    if (!endpoint) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "MISSING_ENDPOINT",
+          message: "Endpoint is required.",
+        },
+      });
+    }
+
+    const subscription = await BrowserSubscription.findOne({
+      where: {
+        endpoint,
+        customerId: id,
+      },
+    });
+
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "SUBSCRIPTION_NOT_FOUND",
+          message: "Subscription not found.",
+        },
+      });
+    }
+
+    await subscription.destroy();
+
+    logger.info("Browser subscription removed");
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        message: "Subscription removed successfully",
       },
     });
   } catch (error) {
@@ -167,7 +227,7 @@ export const getUserSubscription = async (
 
     const subscriptions = await BrowserSubscription.findAll({
       where: {
-        customer_id: id,
+        customerId: id,
       },
     });
 
@@ -179,6 +239,7 @@ export const getUserSubscription = async (
       },
     });
   } catch (error) {
+    console.log(error);
     return res.status(500).json({
       success: false,
       error: {

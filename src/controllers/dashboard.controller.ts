@@ -1,26 +1,31 @@
 import { Response } from "express";
+import { Notification } from "../db/models";
 import {
   emailWorker,
   pushWorker,
 } from "../queue/processors/notification.processor";
-import { emailQueue, pushQueue } from "../queue";
 import { ApiResponse, AuthRequest } from "../types/api";
-import { Job, JobType } from "bullmq";
 import { unauthorized } from "../utils/api";
-import { Notification } from "../db/models";
 
-// Store connected clients
-const clients = new Set<Response>();
+// Store clients per user
+// Each map has userId as key and a set of that user's connections
+const clients = new Map<string, Set<Response>>();
 
-// Push update to all onboarded clients
-const broadcast = (data: object) => {
-  clients.forEach((client) => {
+// Broadcast to a specific user only
+const broadcastToUser = (userId: string, data: object) => {
+  // Get all connections of a user
+  const userClients = clients.get(userId);
+  if (!userClients) return;
+  // Send HTTP data.
+  // client.write send chunks and keeps connection open
+  // \n\n marks end of an event
+  userClients.forEach((client) => {
     client.write(`data: ${JSON.stringify(data)}\n\n`);
   });
 };
 
-// Fetch and broadcast current stats
-const sendQueueStats = async () => {
+// Fetch and broadcast stats for a specific user from DB
+const sendQueueStats = async (userId: string) => {
   const [
     emailWaiting,
     emailActive,
@@ -31,17 +36,33 @@ const sendQueueStats = async () => {
     pushCompleted,
     pushFailed,
   ] = await Promise.all([
-    emailQueue.getWaitingCount(),
-    emailQueue.getActiveCount(),
-    emailQueue.getCompletedCount(),
-    emailQueue.getFailedCount(),
-    pushQueue.getWaitingCount(),
-    pushQueue.getActiveCount(),
-    pushQueue.getCompletedCount(),
-    pushQueue.getFailedCount(),
+    Notification.count({
+      where: { createdBy: userId, channel: "email", status: "waiting" },
+    }),
+    Notification.count({
+      where: { createdBy: userId, channel: "email", status: "active" },
+    }),
+    Notification.count({
+      where: { createdBy: userId, channel: "email", status: "completed" },
+    }),
+    Notification.count({
+      where: { createdBy: userId, channel: "email", status: "failed" },
+    }),
+    Notification.count({
+      where: { createdBy: userId, channel: "push", status: "waiting" },
+    }),
+    Notification.count({
+      where: { createdBy: userId, channel: "push", status: "active" },
+    }),
+    Notification.count({
+      where: { createdBy: userId, channel: "push", status: "completed" },
+    }),
+    Notification.count({
+      where: { createdBy: userId, channel: "push", status: "failed" },
+    }),
   ]);
 
-  broadcast({
+  broadcastToUser(userId, {
     type: "QUEUE_STATS",
     email: {
       waiting: emailWaiting,
@@ -59,45 +80,71 @@ const sendQueueStats = async () => {
 };
 
 // Attach worker event listeners once
+/**
+ * Attach events to worker and on each event change, 
+ * send the newest event and then the queue stats
+ */
 const attachWorkerEvents = () => {
   emailWorker.on("completed", (job) => {
-    broadcast({ type: "JOB_COMPLETED", queue: "email", jobId: job.id ?? "" });
-    sendQueueStats();
+    const { internalUserId } = job.data.internalUser;
+    broadcastToUser(internalUserId, {
+      type: "JOB_COMPLETED",
+      queue: "email",
+      jobId: job.id ?? "",
+    });
+    sendQueueStats(internalUserId);
   });
 
   emailWorker.on("failed", (job, err) => {
-    broadcast({
+    const { internalUserId } = job?.data.internalUser;
+    broadcastToUser(internalUserId, {
       type: "JOB_FAILED",
       queue: "email",
       jobId: job?.id ?? "",
       reason: err.message,
     });
-    sendQueueStats();
+    sendQueueStats(internalUserId);
   });
 
   emailWorker.on("active", (job) => {
-    broadcast({ type: "JOB_ACTIVE", queue: "email", jobId: job.id ?? "" });
-    sendQueueStats();
+    const { internalUserId } = job.data.internalUser;
+    broadcastToUser(internalUserId, {
+      type: "JOB_ACTIVE",
+      queue: "email",
+      jobId: job.id ?? "",
+    });
+    sendQueueStats(internalUserId);
   });
 
   pushWorker.on("completed", (job) => {
-    broadcast({ type: "JOB_COMPLETED", queue: "push", jobId: job.id ?? "" });
-    sendQueueStats();
+    const { internalUserId } = job.data.internalUser;
+    broadcastToUser(internalUserId, {
+      type: "JOB_COMPLETED",
+      queue: "push",
+      jobId: job.id ?? "",
+    });
+    sendQueueStats(internalUserId);
   });
 
   pushWorker.on("failed", (job, err) => {
-    broadcast({
+    const { internalUserId } = job?.data.internalUser;
+    broadcastToUser(internalUserId, {
       type: "JOB_FAILED",
       queue: "push",
       jobId: job?.id ?? "",
       reason: err.message,
     });
-    sendQueueStats();
+    sendQueueStats(internalUserId);
   });
 
   pushWorker.on("active", (job) => {
-    broadcast({ type: "JOB_ACTIVE", queue: "push", jobId: job.id ?? "" });
-    sendQueueStats();
+    const { internalUserId } = job.data.internalUser;
+    broadcastToUser(internalUserId, {
+      type: "JOB_ACTIVE",
+      queue: "push",
+      jobId: job.id ?? "",
+    });
+    sendQueueStats(internalUserId);
   });
 };
 
@@ -105,21 +152,32 @@ attachWorkerEvents();
 
 // SSE Endpoint
 export const dashboardStream = async (req: AuthRequest, res: Response) => {
-  // Set SSE Headers
+  if (!req.user) return unauthorized(res);
+  const { id: userId } = req.user;
+
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
-  // Add Clients
-  clients.add(res);
+  // Register client under userId
+  if (!clients.has(userId)) {
+    clients.set(userId, new Set());
+  }
+  clients.get(userId)!.add(res);
 
-  // Send initial stats on connect
-  await sendQueueStats();
+  // Send initial stats for this user
+  await sendQueueStats(userId);
 
   // Remove client on disconnect
   req.on("close", () => {
-    clients.delete(res);
+    const userClients = clients.get(userId);
+    if (userClients) {
+      userClients.delete(res);
+      if (userClients.size === 0) {
+        clients.delete(userId); // cleanup empty set
+      }
+    }
   });
 };
 
@@ -128,71 +186,57 @@ export const getQueueJobs = async (
   req: AuthRequest,
   res: Response<ApiResponse>,
 ) => {
-  if (!req.user) return unauthorized(res);
-  const { id } = req.user;
+  try {
+    if (!req.user) return unauthorized(res);
+    const { id } = req.user;
 
-  const { queue, state } = req.query;
+    const { queue, state } = req.query;
 
-  const requestedState =
-    state === "all"
-      ? ["waiting", "active", "completed", "failed"]
-      : [state as string];
+    if (!queue)
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "NO_QUEUE_SPECIFIED",
+          message: "Specify a queue to request data.",
+        },
+      });
 
-  if (!queue)
-    return res.status(400).json({
-      success: false,
-      error: {
-        code: "NO_QUEUE_SPECIFIED",
-        message: "Specify a queue to request data.",
-      },
+    const where = {
+      createdBy: id,
+      channel: queue as string,
+      ...(state && state !== "all" ? { status: state as string } : {}),
+    };
+
+    const notifications = await Notification.findAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      limit: 20,
+      attributes: [
+        "id",
+        "displayId",
+        "channel",
+        "status",
+        "customerId",
+        "customerEmail",
+        "templateSlug",
+        "attemptsMade",
+        "failedReason",
+        "createdAt",
+      ],
     });
 
-  const selectedQueue = queue === "push" ? pushQueue : emailQueue;
-
-  const jobs = await selectedQueue.getJobs(requestedState as JobType[], 0, 20);
-
-  // Each job payload includes the following in data:
-  // - notificationId: unique notification record identifier
-  // - internalUser.internalUser: owning user identifier
-  //
-  // Use these fields to:
-  // - Fetch notifications for a specific internal user
-
-  // Filter jobs by user first
-  const userJobs = jobs.filter(
-    (job) => job.data.internalUser?.internalUserId === id,
-  );
-
-  // Collect all notification IDs in one go
-  const notificationIds = userJobs.map((job) => job.data.notificationId);
-
-  // Single query instead of N queries
-  const notifications = await Notification.findAll({
-    where: { id: notificationIds },
-    attributes: ["id", "displayId", "customerId", "customerEmail"],
-  });
-
-  // Map into a lookup object for O(1) access
-  const notificationMap = Object.fromEntries(
-    notifications.map((n) => [n.id, n]),
-  );
-
-  // Enrich jobs
-  const enrichedJobs = userJobs.map((job) => {
-    const notification = notificationMap[job.data.notificationId];
-    return {
-      ...job.toJSON(),
-      data: {
-        ...job.data,
-        displayId: notification?.displayId ?? null,
-        customerId: notification?.customerId ?? null,
-        customerEmail: notification?.customerEmail ?? null,
+    return res.status(200).json({
+      success: true,
+      data: { jobs: notifications },
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unknown error occurred.",
       },
-    };
-  });
-
-  return res.status(200).json({
-    success: true,
-    data: { jobs: enrichedJobs },
-  });
+    });
+  }
 };
