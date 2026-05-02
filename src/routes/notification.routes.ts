@@ -1,16 +1,23 @@
 import { Router } from "express";
 import {
-  createNotification,
+  createEmailNotification,
+  createPushNotification,
   deleteNotification,
   getQueueNotifications,
-  sendTestNotification,
+  sendTestEmailNotification,
+  sendTestPushNotification,
 } from "../controllers/notification.controller";
-import { apiKeysMiddleware } from "../middleware/keys.middleware";
-import { validate } from "../middleware/validate.middleware";
-import { notifySchema } from "../schemas/notification.schema";
-import { testNotificationSchema } from "../schemas/testNotification.schema";
 import { authMiddleware } from "../middleware/auth.middleware";
+import { apiKeysMiddleware } from "../middleware/keys.middleware";
 import { prodDeleteGuardMiddleware } from "../middleware/prod.middleware";
+import { validate } from "../middleware/validate.middleware";
+import {
+  notifyEmailSchema,
+  notifyPushSchema ,
+  testEmailSchema,
+  testPushSchema,
+} from "../schemas/notification.schema";
+import { testNotificationSchema } from "../schemas/testNotification.schema";
 
 const router = Router();
 
@@ -19,17 +26,31 @@ const router = Router();
  * Requires user_id and api_key to move forward
  * */
 router.post(
-  "/notify",
-  validate(notifySchema),
+  "/notify/email",
+  validate(notifyEmailSchema),
   apiKeysMiddleware,
-  createNotification,
+  createEmailNotification,
 );
 
 router.post(
-  "/test",
+  "/notify/push",
+  validate(notifyPushSchema),
+  apiKeysMiddleware,
+  createPushNotification,
+);
+
+router.post(
+  "/test/email",
   authMiddleware,
-  validate(testNotificationSchema),
-  sendTestNotification,
+  validate(testEmailSchema),
+  sendTestEmailNotification,
+);
+
+router.post(
+  "/test/push",
+  authMiddleware,
+  validate(testPushSchema),
+  sendTestPushNotification,
 );
 
 router.delete(
@@ -39,10 +60,6 @@ router.delete(
   deleteNotification,
 );
 
-router.get(
-  "/queue/jobs",
-  authMiddleware,
-  getQueueNotifications
-)
+router.get("/queue/jobs", authMiddleware, getQueueNotifications);
 
 export default router;

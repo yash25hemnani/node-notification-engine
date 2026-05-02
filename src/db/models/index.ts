@@ -5,6 +5,7 @@ import { Template } from "./Template";
 import { TemplateAttachment } from "./TemplateAttachment";
 import { UploadedFile } from "./UploadedFile";
 import { User } from "./User";
+import { EmailNotificationDetail } from "./EmailNotificationDetail";
 
 // ── User Relations ─────────────────────────────────────
 User.hasMany(RefreshToken, { foreignKey: "userId", as: "tokens" });
@@ -51,6 +52,17 @@ TemplateAttachment.belongsTo(UploadedFile, {
   as: "file",
 });
 
+// ── Notification Detail Relations ──────────────────────
+Notification.hasOne(EmailNotificationDetail, {
+  foreignKey: "notificationId",
+  as: "emailDetail",
+});
+EmailNotificationDetail.belongsTo(Notification, {
+  foreignKey: "notificationId",
+  as: "notification",
+});
+
+
 // ── Exports ────────────────────────────────────────────
 export { ApiKey } from "./ApiKey";
 export { BrowserSubscription } from "./BrowserSubscription";
@@ -58,4 +70,6 @@ export { Notification } from "./Notification";
 export { RefreshToken } from "./RefreshToken";
 export { Template } from "./Template";
 export { User } from "./User";
-
+export { UploadedFile } from "./UploadedFile";
+export { TemplateAttachment } from "./TemplateAttachment";
+export { EmailNotificationDetail } from "./EmailNotificationDetail";

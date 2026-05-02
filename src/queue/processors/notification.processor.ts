@@ -3,6 +3,7 @@ import { redis } from "../index";
 import { logger } from "../../utils/logger";
 import {
   BrowserSubscription,
+  EmailNotificationDetail,
   Notification,
   Template,
 } from "../../db/models/index";
@@ -22,7 +23,6 @@ export const emailWorker = new Worker(
     const notification = await Notification.findByPk(notificationId);
     if (!notification) throw new Error("Notification not found.");
 
-    // Set job Id
     notification.jobId = job.id ?? "";
     await notification.save();
 
@@ -44,13 +44,20 @@ export const emailWorker = new Worker(
       template.body,
       notification.data as any,
     );
-
     const renderedSubject = renderTemplate(
       template.subject,
       notification.data as any,
     );
 
     logger.info("Body/Subject rendered.");
+
+    const emailDetail = await EmailNotificationDetail.findOne({
+      where: { notificationId: notification.id },
+    });
+
+    if (!emailDetail) throw new Error("Email notification detail not found.");
+
+    logger.info("Email detail found.");
 
     notification.status = "active";
     await notification.save();
@@ -60,6 +67,12 @@ export const emailWorker = new Worker(
         notification.recipient,
         renderedSubject,
         renderedBody,
+        {
+          to: emailDetail.to,
+          cc: emailDetail.cc ?? undefined,
+          bcc: emailDetail.bcc ?? undefined,
+          replyTo: emailDetail.replyTo ?? undefined,
+        },
       );
 
       notification.status = "completed";
@@ -84,10 +97,7 @@ export const pushWorker = new Worker(
   "push-queue",
   async (job) => {
     const { notificationId, internalUser } = job.data;
-    console.log(internalUser);
-
     const { internalUserId } = internalUser;
-    console.log(internalUserId);
 
     logger.info(`Processing push notification ${notificationId}`);
 
@@ -116,11 +126,18 @@ export const pushWorker = new Worker(
       notification.data as any,
     );
 
+    // Look up subscription directly by endpoint stored on notification
     const subscription = await BrowserSubscription.findOne({
       where: { endpoint: notification.recipient },
     });
 
-    if (!subscription) throw new Error("Subscription not found.");
+    if (!subscription) {
+      notification.status = "failed";
+      notification.failedReason = "Subscription no longer exists.";
+      await notification.save();
+      logger.warn(`Subscription not found for endpoint, skipping.`);
+      return;
+    }
 
     logger.info("Subscription found");
 
@@ -139,6 +156,12 @@ export const pushWorker = new Worker(
 
       logger.info(`Push sent: ${notification.id}`);
     } catch (err: any) {
+      // Subscription is gone on the push service side — clean it up
+      if (err.statusCode === 410) {
+        await subscription.destroy();
+        logger.warn(`Stale subscription removed: ${subscription.id}`);
+      }
+
       notification.status = "failed";
       notification.attemptsMade = job.attemptsMade;
       notification.failedReason = err.message;

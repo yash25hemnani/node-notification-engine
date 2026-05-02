@@ -1,8 +1,12 @@
+import { where } from "sequelize";
+import { ENV } from "../config/env";
 import { Template } from "../db/models";
 import { TemplateAttachment } from "../db/models/TemplateAttachment";
 import { UploadedFile } from "../db/models/UploadedFile";
 import { ApiResponse, AuthRequest } from "../types/api";
 import { Response } from "express";
+import path from "path";
+import fs from "fs/promises"
 
 /**
  * Get all attachments for a template
@@ -29,7 +33,14 @@ export const getTemplateAttachments = async (
       {
         model: UploadedFile,
         as: "file",
-        attributes: ["id", "originalName", "mimeType", "size", "path","createdAt"],
+        attributes: [
+          "id",
+          "originalName",
+          "mimeType",
+          "size",
+          "path",
+          "createdAt",
+        ],
       },
     ],
     attributes: ["id", "templateId", "fileId", "createdAt"],
@@ -59,10 +70,10 @@ export const addTemplateAttachment = async (
       });
     }
 
-    console.log(req.params)
+    console.log(req.params);
 
     const { templateId } = req.params;
-    
+
     if (!templateId)
       return res.status(400).json({
         success: true,
@@ -169,6 +180,27 @@ export const deleteTemplateAttachment = async (
           message: "Attachment not found.",
         },
       });
+    }
+
+    if (ENV.NODE_ENV === "development") {
+      const file = await UploadedFile.findOne({
+        where: {
+          id: attachment.fileId,
+        },
+      });
+
+      if (!file) return res.status(404).json({
+        success: false,
+        error: {
+          code: "FILE_NOT_FOUND",
+          message: "File not found.",
+        },
+      });
+      
+      const absolutePath = path.join(__dirname, "../../", file?.path);
+      
+      await file?.destroy();
+      await fs.unlink(absolutePath);
     }
 
     await attachment.destroy();
