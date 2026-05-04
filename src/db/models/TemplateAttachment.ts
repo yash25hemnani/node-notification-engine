@@ -1,6 +1,7 @@
-import { DataTypes, Model } from "sequelize";
+import { DataTypes, Model, NonAttribute } from "sequelize";
 import { sequelize } from "../sequelize";
 import { Template } from "./Template";
+import { UploadedFile } from "./UploadedFile";
 
 export class TemplateAttachment extends Model {
   declare id: string;
@@ -9,6 +10,7 @@ export class TemplateAttachment extends Model {
   declare filename: string;
   declare mimeType: string;
   declare size: number;
+  declare file: NonAttribute<UploadedFile>;
 }
 
 TemplateAttachment.init(
@@ -30,6 +32,11 @@ TemplateAttachment.init(
     fileId: {
       type: DataTypes.UUID,
       allowNull: false,
+      references: {
+        model: "uploaded_files",
+        key: "id",
+      },
+      onDelete: "CASCADE",
     },
     filename: {
       type: DataTypes.STRING,

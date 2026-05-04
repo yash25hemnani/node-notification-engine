@@ -4,12 +4,72 @@ import {
   EmailNotificationDetail,
   Notification,
   Template,
+  TemplateAttachment,
+  UploadedFile,
   User,
 } from "../db/models";
 import { enqueueNotification } from "../queue/jobs/notification.job";
 import { logger } from "../utils/logger";
 import { ApiKeyRequest, ApiResponse, AuthRequest } from "../types/api";
 import { unauthorized } from "../utils/api";
+import fs from "fs";
+
+export const uploadEmailAttachments = async (
+  req: ApiKeyRequest,
+  res: Response<ApiResponse>,
+) => {
+  try {
+    if (!req.apiKey) return unauthorized(res);
+
+    const { userId: internalUserId } = req.apiKey;
+
+    const files = req.files as Express.Multer.File[];
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "NO_FILES",
+          message: "No files were uploaded.",
+        },
+      });
+    }
+
+    const uploads = await Promise.all(
+      files.map((file) =>
+        UploadedFile.create({
+          filename: file.filename,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          path: file.path,
+          uploadedBy: String(internalUserId),
+        }),
+      ),
+    );
+
+    const paths = uploads.map((upload) => ({
+      path: upload.path,
+      originalname: upload.originalName,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        paths,
+      },
+    });
+  } catch (error) {
+    logger.error(error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error occurred.",
+      },
+    });
+  }
+};
 
 // ── Create Email Notification ─────────────────────────────────────────────────
 export const createEmailNotification = async (
@@ -21,7 +81,17 @@ export const createEmailNotification = async (
 
     const { userId: internalUserId } = req.apiKey;
 
-    const { customerId, customerEmail, templateSlug, data, cc, bcc, replyTo } = req.body;
+    const {
+      customerId,
+      customerEmail,
+      templateSlug,
+      data,
+      cc,
+      bcc,
+      replyTo,
+      filePaths, // Array of file paths
+      uploadedPaths, // Array of objects upload original name and paths
+    } = req.body;
 
     const to: string[] = req.body.to?.length ? req.body.to : [customerEmail];
 
@@ -32,13 +102,18 @@ export const createEmailNotification = async (
     if (!template)
       return res.status(404).json({
         success: false,
-        error: { code: "TEMPLATE_NOT_FOUND", message: "Template does not exist." },
+        error: {
+          code: "TEMPLATE_NOT_FOUND",
+          message: "Template does not exist.",
+        },
       });
 
     const idempotencyKey = req.header("Idempotency-Key");
 
     if (idempotencyKey) {
-      const existing = await Notification.findOne({ where: { idempotencyKey } });
+      const existing = await Notification.findOne({
+        where: { idempotencyKey },
+      });
       if (existing) {
         return res.status(200).json({
           success: true,
@@ -69,8 +144,49 @@ export const createEmailNotification = async (
 
     logger.info("Email notification created");
 
+    /**
+     * If req.files exists
+     * If filePaths are send, send them to the worker directly, nodemailer handles them directly.
+     */
+
+    if (filePaths.length > 0) {
+      console.log("File Paths Recevied");
+      console.log(filePaths);
+      filePaths.forEach((filePath: string) => {
+        if (!fs.existsSync(filePath)) {
+          return res.status(404).json({
+            success: false,
+            error: {
+              code: "FILE_NOT_FOUND_ON_DISK",
+              message: "File no longer exists on disk.",
+            },
+          });
+        }
+      });
+      console.log("File paths existing");
+    }
+
+    if (uploadedPaths && uploadedPaths.length > 0) {
+      for (const file of uploadedPaths) {
+        if (!fs.existsSync(file.path)) {
+          return res.status(404).json({
+            success: false,
+            error: {
+              code: "FILE_NOT_FOUND_ON_DISK",
+              message: `File ${file.originalName} no longer exists on disk.`,
+            },
+          });
+        }
+      }
+    }
+
     await enqueueNotification(
-      { notificationId: notification.id, internalUser: { internalUserId } },
+      {
+        notificationId: notification.id,
+        internalUser: { internalUserId },
+        ...(filePaths.length > 0 ? { filePaths } : {}),
+        ...(uploadedPaths.length > 0 ? { uploadedPaths } : {}),
+      },
       "email",
     );
 
@@ -82,7 +198,10 @@ export const createEmailNotification = async (
     logger.error(error);
     return res.status(500).json({
       success: false,
-      error: { code: "INTERNAL_SERVER_ERROR", message: "Internal server error occurred." },
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error occurred.",
+      },
     });
   }
 };
@@ -106,13 +225,18 @@ export const createPushNotification = async (
     if (!template)
       return res.status(404).json({
         success: false,
-        error: { code: "TEMPLATE_NOT_FOUND", message: "Template does not exist." },
+        error: {
+          code: "TEMPLATE_NOT_FOUND",
+          message: "Template does not exist.",
+        },
       });
 
     const idempotencyKey = req.header("Idempotency-Key");
 
     if (idempotencyKey) {
-      const existing = await Notification.findOne({ where: { idempotencyKey } });
+      const existing = await Notification.findOne({
+        where: { idempotencyKey },
+      });
       if (existing) {
         return res.status(200).json({
           success: true,
@@ -128,7 +252,10 @@ export const createPushNotification = async (
     if (!subscriptions.length)
       return res.status(404).json({
         success: false,
-        error: { code: "SUBSCRIPTION_NOT_FOUND", message: "Customer not subscribed." },
+        error: {
+          code: "SUBSCRIPTION_NOT_FOUND",
+          message: "Customer not subscribed.",
+        },
       });
 
     const notifications = await Promise.all(
@@ -169,7 +296,10 @@ export const createPushNotification = async (
     logger.error(error);
     return res.status(500).json({
       success: false,
-      error: { code: "INTERNAL_SERVER_ERROR", message: "Internal server error occurred." },
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error occurred.",
+      },
     });
   }
 };
@@ -203,19 +333,27 @@ export const sendTestEmailNotification = async (
     if (!template)
       return res.status(404).json({
         success: false,
-        error: { code: "TEMPLATE_NOT_FOUND", message: "Template with given slug not found." },
+        error: {
+          code: "TEMPLATE_NOT_FOUND",
+          message: "Template with given slug not found.",
+        },
       });
 
     if (!template.body || !template.subject)
       return res.status(400).json({
         success: false,
-        error: { code: "TEMPLATE_NOT_COMPLETE", message: "Template doesn't have subject or body." },
+        error: {
+          code: "TEMPLATE_NOT_COMPLETE",
+          message: "Template doesn't have subject or body.",
+        },
       });
 
     const idempotencyKey = req.header("Idempotency-Key");
 
     if (idempotencyKey) {
-      const existing = await Notification.findOne({ where: { idempotencyKey } });
+      const existing = await Notification.findOne({
+        where: { idempotencyKey },
+      });
       if (existing) {
         return res.status(200).json({
           success: true,
@@ -259,7 +397,10 @@ export const sendTestEmailNotification = async (
     logger.error(error);
     return res.status(500).json({
       success: false,
-      error: { code: "INTERNAL_SERVER_ERROR", message: "Internal server error occurred." },
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error occurred.",
+      },
     });
   }
 };
@@ -291,19 +432,27 @@ export const sendTestPushNotification = async (
     if (!template)
       return res.status(404).json({
         success: false,
-        error: { code: "TEMPLATE_NOT_FOUND", message: "Template with given slug not found." },
+        error: {
+          code: "TEMPLATE_NOT_FOUND",
+          message: "Template with given slug not found.",
+        },
       });
 
     if (!template.body || !template.subject)
       return res.status(400).json({
         success: false,
-        error: { code: "TEMPLATE_NOT_COMPLETE", message: "Template doesn't have subject or body." },
+        error: {
+          code: "TEMPLATE_NOT_COMPLETE",
+          message: "Template doesn't have subject or body.",
+        },
       });
 
     const idempotencyKey = req.header("Idempotency-Key");
 
     if (idempotencyKey) {
-      const existing = await Notification.findOne({ where: { idempotencyKey } });
+      const existing = await Notification.findOne({
+        where: { idempotencyKey },
+      });
       if (existing) {
         return res.status(200).json({
           success: true,
@@ -319,7 +468,10 @@ export const sendTestPushNotification = async (
     if (!subscriptions.length)
       return res.status(404).json({
         success: false,
-        error: { code: "SUBSCRIPTION_NOT_FOUND", message: "User is not subscribed to push notifications." },
+        error: {
+          code: "SUBSCRIPTION_NOT_FOUND",
+          message: "User is not subscribed to push notifications.",
+        },
       });
 
     const notifications = await Promise.all(
@@ -343,7 +495,10 @@ export const sendTestPushNotification = async (
     await Promise.all(
       notifications.map((notification) =>
         enqueueNotification(
-          { notificationId: notification.id, internalUser: { internalUserId: id } },
+          {
+            notificationId: notification.id,
+            internalUser: { internalUserId: id },
+          },
           "push",
         ),
       ),
@@ -360,7 +515,10 @@ export const sendTestPushNotification = async (
     logger.error(error);
     return res.status(500).json({
       success: false,
-      error: { code: "INTERNAL_SERVER_ERROR", message: "Internal server error occurred." },
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error occurred.",
+      },
     });
   }
 };
@@ -401,7 +559,10 @@ export const deleteNotification = async (
     logger.error(error);
     return res.status(500).json({
       success: false,
-      error: { code: "INTERNAL_SERVER_ERROR", message: "Unknown error occurred." },
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unknown error occurred.",
+      },
     });
   }
 };
@@ -420,7 +581,10 @@ export const getQueueNotifications = async (
     if (!queue)
       return res.status(400).json({
         success: false,
-        error: { code: "NO_QUEUE_SPECIFIED", message: "Specify a queue to request data." },
+        error: {
+          code: "NO_QUEUE_SPECIFIED",
+          message: "Specify a queue to request data.",
+        },
       });
 
     const where = {
@@ -434,8 +598,16 @@ export const getQueueNotifications = async (
       order: [["createdAt", "DESC"]],
       limit: 20,
       attributes: [
-        "id", "displayId", "channel", "status", "customerId",
-        "customerEmail", "templateSlug", "attemptsMade", "failedReason", "createdAt",
+        "id",
+        "displayId",
+        "channel",
+        "status",
+        "customerId",
+        "customerEmail",
+        "templateSlug",
+        "attemptsMade",
+        "failedReason",
+        "createdAt",
       ],
     });
 
@@ -447,7 +619,10 @@ export const getQueueNotifications = async (
     logger.error(error);
     return res.status(500).json({
       success: false,
-      error: { code: "INTERNAL_SERVER_ERROR", message: "Unknown error occurred." },
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unknown error occurred.",
+      },
     });
   }
 };

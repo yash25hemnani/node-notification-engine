@@ -6,16 +6,19 @@ import {
   EmailNotificationDetail,
   Notification,
   Template,
+  TemplateAttachment,
+  UploadedFile,
 } from "../../db/models/index";
 import { renderTemplate } from "../../utils/template";
 import { emailProvider } from "../../providers/email";
 import { sendPush } from "../../providers/push";
+import path from "node:path";
 
 // ── Email Worker ──────────────────────────────────────────────────────────────
 export const emailWorker = new Worker(
   "email-queue",
   async (job) => {
-    const { notificationId, internalUser } = job.data;
+    const { notificationId, internalUser, filePaths, uploadedPaths } = job.data;
     const { internalUserId } = internalUser;
 
     logger.info(`Processing email notification ${notificationId}`);
@@ -44,6 +47,7 @@ export const emailWorker = new Worker(
       template.body,
       notification.data as any,
     );
+
     const renderedSubject = renderTemplate(
       template.subject,
       notification.data as any,
@@ -62,6 +66,52 @@ export const emailWorker = new Worker(
     notification.status = "active";
     await notification.save();
 
+    const attachments = await TemplateAttachment.findAll({
+      where: { templateId: template.id },
+      include: [
+        {
+          model: UploadedFile,
+          as: "file",
+          attributes: ["path", "originalName", "mimeType"], // path included here
+        },
+      ],
+    });
+
+    if (attachments) {
+      logger.info("Attachments found.");
+    } else {
+      logger.info("No attachments found.");
+    }
+
+    // Map to nodemailer format
+    const mailAttachments = attachments.map((a) => ({
+      filename: a.file.originalName,
+      path: path.join(process.cwd(), a.file.path),
+    }));
+
+    // If filePaths exist, add them to mail attachments as well
+    if (filePaths.length > 0) {
+      console.log("Worker received file paths");
+      filePaths.forEach((filePath: string) => {
+        const filename = path.basename(filePath);
+        mailAttachments.push({
+          filename,
+          path: filePath,
+        });
+      });
+      console.log("added to attachment list");
+    }
+
+    if (uploadedPaths && uploadedPaths.length > 0) {
+      console.log("Worker received uploaded file paths");
+      uploadedPaths.forEach((file: { originalname: string; path: string }) => {
+        mailAttachments.push({
+          filename: file.originalname,
+          path: file.path,
+        });
+      });
+      console.log("Added uploaded files to attachment list");
+    }
     try {
       await emailProvider.sendEmail(
         notification.recipient,
@@ -72,6 +122,7 @@ export const emailWorker = new Worker(
           cc: emailDetail.cc ?? undefined,
           bcc: emailDetail.bcc ?? undefined,
           replyTo: emailDetail.replyTo ?? undefined,
+          attachments: mailAttachments,
         },
       );
 

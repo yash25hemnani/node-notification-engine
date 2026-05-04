@@ -24,6 +24,12 @@ export const emailProvider: EmailProvider = {
       replyTo: options?.replyTo ?? undefined,
       subject,
       html,
+
+      attachments: options?.attachments?.map((file) => ({
+        filename: file.filename,
+        path: file.path, // local file path
+        contentType: file.contentType,
+      })),
     });
 
     return {

@@ -1,19 +1,70 @@
 import { Request, Response } from "express";
 import { BrowserSubscription, User } from "../db/models";
-import { ApiResponse, AuthRequest } from "../types/api";
+import { ApiKeyRequest, ApiResponse, AuthRequest } from "../types/api";
 import { logger } from "../utils/logger";
 import { unauthorized } from "../utils/api";
 
-export const createSubscription = async (req: Request, res: Response) => {
-  try {
-    const { customerId, customerEmail, endpoint, keys } = req.body;
 
-    if (!endpoint || !keys || !customerId) {
+export const getUserSubscription = async (
+  req: ApiKeyRequest,
+  res: Response<ApiResponse>,
+) => {
+  try {
+    if (!req.apiKey) return unauthorized(res)
+
+    const { endpoint } = req.query;
+
+    const subscription = await BrowserSubscription.findOne({
+      where: {
+        endpoint
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        subscription,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error occurred.",
+      },
+    });
+  }
+};
+
+
+export const createSubscription = async (
+  req: ApiKeyRequest,
+  res: Response<ApiResponse>,
+) => {
+  try {
+    if (!req.apiKey) return unauthorized(res);
+
+    const { customerId, customerEmail, subscription } = req.body;
+
+    if (
+      !subscription ||
+      !subscription.endpoint ||
+      !subscription.keys ||
+      !customerId ||
+      !customerEmail
+    ) {
       return res.status(400).json({
         success: false,
-        message: "userId, endpoint and keys are required",
+        error: {
+          code: "INVALID_SUBSCRIPTION_PAYLOAD",
+          message: "Valid subscription object is required.",
+        },
       });
     }
+
+    const { endpoint, keys } = subscription;
 
     const existing = await BrowserSubscription.findOne({
       where: {
@@ -31,12 +82,78 @@ export const createSubscription = async (req: Request, res: Response) => {
       });
     }
 
-    return res.json({ success: true });
+    return res.status(200).json({
+      success: true,
+      data: {
+        message: existing
+          ? "Subscription already exists"
+          : "Subscription created successfully",
+      },
+    });
   } catch (err) {
-    console.error("Subscription error:", err);
+    console.log(err);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error occurred.",
+      },
+    });
+  }
+};
+
+export const removeSubscription = async (
+  req: ApiKeyRequest,
+  res: Response<ApiResponse>,
+) => {
+  try {
+    if (!req.apiKey) return unauthorized(res);
+
+    const { endpoint } = req.body;
+
+    if (!endpoint) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "MISSING_ENDPOINT",
+          message: "Endpoint is required.",
+        },
+      });
+    }
+
+    const subscription = await BrowserSubscription.findOne({
+      where: {
+        endpoint,
+      },
+    });
+
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "SUBSCRIPTION_NOT_FOUND",
+          message: "Subscription not found.",
+        },
+      });
+    }
+
+    await subscription.destroy();
+
+    logger.info("Browser subscription removed");
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        message: "Subscription removed successfully",
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error occurred.",
+      },
     });
   }
 };
@@ -184,58 +301,28 @@ export const removeInternalSubscription = async (
   }
 };
 
-export const getUserSubscription = async (
+export const getInternalUserSubscription = async (
   req: AuthRequest,
   res: Response<ApiResponse>,
 ) => {
   try {
-    if (!req.user) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: "AUTHENTICATION_FAILED",
-          message: "User not authenticated.",
-        },
-      });
-    }
+    if (!req.user) return unauthorized(res)
 
-    const { id } = req.user;
+    const {id} = req.user
 
-    if (!id) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: "USER_NOT_AUTHENTICATED",
-          message: "User not logged in.",
-        },
-      });
-    }
+    const { endpoint } = req.query;
 
-    const user = await User.findOne({
-      where: { id },
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: "USER_NOT_FOUND",
-          message: "User not found.",
-        },
-      });
-    }
-
-    const subscriptions = await BrowserSubscription.findAll({
+    const subscription = await BrowserSubscription.findOne({
       where: {
         customerId: id,
+        endpoint
       },
     });
 
     return res.status(200).json({
       success: true,
       data: {
-        subscriptions,
-        count: subscriptions.length,
+        subscription,
       },
     });
   } catch (error) {

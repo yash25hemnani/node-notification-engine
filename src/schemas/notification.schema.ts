@@ -10,6 +10,16 @@ export const notifyEmailSchema = z.object({
   cc: z.array(z.string().email()).optional(),
   bcc: z.array(z.string().email()).optional(),
   replyTo: z.string().email().optional(),
+  files: z.any().optional(),
+  filePaths: z.array(z.string()).optional(),
+  uploadedPaths: z
+    .array(
+      z.object({
+        path: z.string(),
+        originalname: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 // ── Notify Push Schema ────────────────────────────────────────────────────────

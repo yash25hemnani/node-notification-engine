@@ -6,6 +6,7 @@ interface NotificationJobPayload {
   internalUser: {
     internalUserId: string;
   };
+  filePaths?: string[]
 }
 
 export async function enqueueNotification(
