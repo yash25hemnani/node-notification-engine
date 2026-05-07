@@ -60,8 +60,12 @@ export const handleSignup = async (
   return res.status(201).json({
     success: true,
     data: {
-      user: { id: newUser.id },
-      access_token: accessToken,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        username: newUser.username,
+      },
+      accessToken: accessToken,
     },
   });
 };
@@ -116,8 +120,12 @@ export const handleLogin = async (req: Request, res: Response<ApiResponse>) => {
   return res.status(200).json({
     success: true,
     data: {
-      user: { id: user.id },
-      access_token: accessToken,
+       user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+      },
+      accessToken: accessToken,
     },
   });
 };
@@ -166,7 +174,12 @@ export const handleRefresh = async (
   return res.status(200).json({
     success: true,
     data: {
-      access_token: accessToken,
+       user: {
+        id: token.user?.id,
+        email: token.user?.email,
+        username: token.user?.username,
+      },
+      accessToken: accessToken,
     },
   });
 };

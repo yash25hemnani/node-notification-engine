@@ -4,6 +4,7 @@ import {
   createPushNotification,
   deleteNotification,
   getQueueNotifications,
+  getSingleNotification,
   sendTestEmailNotification,
   sendTestPushNotification,
   uploadEmailAttachments,
@@ -73,5 +74,6 @@ router.delete(
 );
 
 router.get("/queue/jobs", authMiddleware, getQueueNotifications);
+router.get("/:notificationId", authMiddleware, getSingleNotification);
 
 export default router;

@@ -62,6 +62,15 @@ EmailNotificationDetail.belongsTo(Notification, {
   as: "notification",
 });
 
+// ── Notification Relations ─────────────────────────────
+Template.hasMany(Notification, {
+  foreignKey: "templateId",
+  as: "notifications",
+});
+Notification.belongsTo(Template, {
+  foreignKey: "templateId",
+  as: "template",
+});
 
 // ── Exports ────────────────────────────────────────────
 export { ApiKey } from "./ApiKey";

@@ -4,19 +4,18 @@ import { ApiKeyRequest, ApiResponse, AuthRequest } from "../types/api";
 import { logger } from "../utils/logger";
 import { unauthorized } from "../utils/api";
 
-
 export const getUserSubscription = async (
   req: ApiKeyRequest,
   res: Response<ApiResponse>,
 ) => {
   try {
-    if (!req.apiKey) return unauthorized(res)
+    if (!req.apiKey) return unauthorized(res);
 
     const { endpoint } = req.query;
 
     const subscription = await BrowserSubscription.findOne({
       where: {
-        endpoint
+        endpoint,
       },
     });
 
@@ -37,7 +36,6 @@ export const getUserSubscription = async (
     });
   }
 };
-
 
 export const createSubscription = async (
   req: ApiKeyRequest,
@@ -306,18 +304,38 @@ export const getInternalUserSubscription = async (
   res: Response<ApiResponse>,
 ) => {
   try {
-    if (!req.user) return unauthorized(res)
+    if (!req.user) return unauthorized(res);
 
-    const {id} = req.user
+    const { id } = req.user;
 
     const { endpoint } = req.query;
+
+    if (!endpoint) {
+      return res.status(200).json({
+        success: false,
+        error: {
+          code: "NO_SUBSCRIPTION_EXISTS",
+          message: "Create a new subscription",
+        },
+      });
+    }
 
     const subscription = await BrowserSubscription.findOne({
       where: {
         customerId: id,
-        endpoint
+        endpoint,
       },
     });
+
+    if (!subscription) {
+      return res.status(200).json({
+        success: false,
+        error: {
+          code: "NO_SUBSCRIPTION_EXISTS",
+          message: "Create a new subscription",
+        },
+      });
+    }
 
     return res.status(200).json({
       success: true,

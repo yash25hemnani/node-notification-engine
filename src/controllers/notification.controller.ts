@@ -127,6 +127,11 @@ export const createEmailNotification = async (
       customerId,
       customerEmail,
       recipient: customerEmail,
+      templateId: template.id,
+      templateSnapshot: {
+        subject: template.subject,
+        body: template.body,
+      },
       templateSlug,
       data,
       status: "waiting",
@@ -265,6 +270,11 @@ export const createPushNotification = async (
           customerId,
           customerEmail,
           recipient: sub.endpoint,
+          templateId: template.id,
+          templateSnapshot: {
+            subject: template.subject,
+            body: template.body,
+          },
           templateSlug,
           data,
           status: "waiting",
@@ -367,6 +377,11 @@ export const sendTestEmailNotification = async (
       customerId: id,
       customerEmail: user.email,
       recipient: user.email,
+      templateId: template.id,
+      templateSnapshot: {
+        subject: template.subject,
+        body: template.body,
+      },
       templateSlug,
       data,
       status: "waiting",
@@ -481,6 +496,11 @@ export const sendTestPushNotification = async (
           customerId: id,
           customerEmail: user.email,
           recipient: sub.endpoint,
+          templateId: template.id,
+          templateSnapshot: {
+            subject: template.subject,
+            body: template.body,
+          },
           templateSlug,
           data,
           status: "waiting",
@@ -614,6 +634,54 @@ export const getQueueNotifications = async (
     return res.status(200).json({
       success: true,
       data: { jobs: notifications },
+    });
+  } catch (error) {
+    logger.error(error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Unknown error occurred.",
+      },
+    });
+  }
+};
+
+// ── Get Single Notification ──────────────────────────────────────────────────
+export const getSingleNotification = async (
+  req: AuthRequest,
+  res: Response<ApiResponse>,
+) => {
+  try {
+    if (!req.user) return unauthorized(res);
+
+    const { id: userId } = req.user;
+    const { notificationId } = req.params;
+
+    const notification = await Notification.findOne({
+      where: { id: notificationId, createdBy: userId },
+      include: [
+        {
+          model: EmailNotificationDetail,
+          as: "emailDetail",
+        },
+      ],
+    });
+
+    if (!notification)
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOTIFICATION_NOT_FOUND",
+          message: "Notification not found.",
+        },
+      });
+
+    
+
+    return res.status(200).json({
+      success: true,
+      data: { notification },
     });
   } catch (error) {
     logger.error(error);

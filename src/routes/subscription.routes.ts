@@ -18,6 +18,6 @@ router.post("/unsubscribe", apiKeysMiddleware, removeSubscription);
 
 router.get("/internal", authMiddleware, getInternalUserSubscription);
 router.post("/internal-subscribe", authMiddleware, createInternalSubscription);
-router.delete("/internal-unsubscribe", authMiddleware, removeInternalSubscription);
+router.post("/internal-unsubscribe", authMiddleware, removeInternalSubscription);
 
 export default router;
