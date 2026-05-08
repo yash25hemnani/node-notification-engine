@@ -67,9 +67,19 @@ Template.hasMany(Notification, {
   foreignKey: "templateId",
   as: "notifications",
 });
+
 Notification.belongsTo(Template, {
   foreignKey: "templateId",
   as: "template",
+});
+
+Notification.hasMany(UploadedFile, {
+  foreignKey: "notificationId",
+  as: "files",
+});
+UploadedFile.belongsTo(Notification, {
+  foreignKey: "notificationId",
+  as: "notification",
 });
 
 // ── Exports ────────────────────────────────────────────

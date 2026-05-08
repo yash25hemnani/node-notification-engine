@@ -13,6 +13,8 @@ import { logger } from "../utils/logger";
 import { ApiKeyRequest, ApiResponse, AuthRequest } from "../types/api";
 import { unauthorized } from "../utils/api";
 import fs from "fs";
+import path from "path";
+import mime from "mime-types";
 
 export const uploadEmailAttachments = async (
   req: ApiKeyRequest,
@@ -35,20 +37,31 @@ export const uploadEmailAttachments = async (
       });
     }
 
+    // Get relative path since Express.Multer.File returns full path
+    const fileData = files.map((file) => ({
+      ...file,
+      path: file.path.replace(/\\/g, "/").split("uploads/")[1]
+        ? `uploads/${file.path.replace(/\\/g, "/").split("uploads/")[1]}`
+        : file.path,
+    }));
+
+    // Upload all files
     const uploads = await Promise.all(
-      files.map((file) =>
+      fileData.map((file) =>
         UploadedFile.create({
           filename: file.filename,
           originalName: file.originalname,
           mimeType: file.mimetype,
           size: file.size,
-          path: file.path,
+          path: file.path, // now relative
           uploadedBy: String(internalUserId),
+          source: "upload",
         }),
       ),
     );
 
     const paths = uploads.map((upload) => ({
+      id: upload.id,
       path: upload.path,
       originalname: upload.originalName,
     }));
@@ -81,19 +94,15 @@ export const createEmailNotification = async (
 
     const { userId: internalUserId } = req.apiKey;
 
-    const {
-      customerId,
-      customerEmail,
-      templateSlug,
-      data,
-      cc,
-      bcc,
-      replyTo,
-      filePaths, // Array of file paths
-      uploadedPaths, // Array of objects upload original name and paths
-    } = req.body;
+    const { customerId, customerEmail, templateSlug, data, cc, bcc, replyTo } =
+      req.body;
 
     const to: string[] = req.body.to?.length ? req.body.to : [customerEmail];
+
+    const filePaths: string[] = req.body.filePaths ?? [];
+
+    const uploadedPaths: { id: string; path: string; originalName: string }[] =
+      req.body.uploadedPaths ?? [];
 
     const template = await Template.findOne({
       where: { slug: templateSlug, userId: internalUserId, channel: "email" },
@@ -122,6 +131,32 @@ export const createEmailNotification = async (
       }
     }
 
+    // ── Validate all file paths before touching the DB
+    for (const filePath of filePaths) {
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: "FILE_NOT_FOUND_ON_DISK",
+            message: `File ${path.basename(filePath)} does not exist on disk.`,
+          },
+        });
+      }
+    }
+
+    for (const file of uploadedPaths) {
+      if (!fs.existsSync(file.path)) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: "FILE_NOT_FOUND_ON_DISK",
+            message: `File ${file.originalName} does not exist on disk.`,
+          },
+        });
+      }
+    }
+
+    // ── Create notification ──────────────────────────────────────────
     const notification = await Notification.create({
       channel: "email",
       customerId,
@@ -149,40 +184,25 @@ export const createEmailNotification = async (
 
     logger.info("Email notification created");
 
-    /**
-     * If req.files exists
-     * If filePaths are send, send them to the worker directly, nodemailer handles them directly.
-     */
-
-    if (filePaths.length > 0) {
-      console.log("File Paths Recevied");
-      console.log(filePaths);
-      filePaths.forEach((filePath: string) => {
-        if (!fs.existsSync(filePath)) {
-          return res.status(404).json({
-            success: false,
-            error: {
-              code: "FILE_NOT_FOUND_ON_DISK",
-              message: "File no longer exists on disk.",
-            },
-          });
-        }
+    // ── Create UploadedFile records for local file paths ─────────────
+    for (const filePath of filePaths) {
+      await UploadedFile.create({
+        filename: path.basename(filePath),
+        originalName: path.basename(filePath),
+        mimeType: mime.lookup(filePath) || "application/octet-stream",
+        size: fs.statSync(filePath).size,
+        path: filePath,
+        notificationId: notification.id,
+        source: "local",
       });
-      console.log("File paths existing");
     }
 
-    if (uploadedPaths && uploadedPaths.length > 0) {
-      for (const file of uploadedPaths) {
-        if (!fs.existsSync(file.path)) {
-          return res.status(404).json({
-            success: false,
-            error: {
-              code: "FILE_NOT_FOUND_ON_DISK",
-              message: `File ${file.originalName} no longer exists on disk.`,
-            },
-          });
-        }
-      }
+    // ── Link already-uploaded files to this notification ─────────────
+    for (const file of uploadedPaths) {
+      await UploadedFile.update(
+        { notificationId: notification.id },
+        { where: { id: file.id } },
+      );
     }
 
     await enqueueNotification(
@@ -665,6 +685,11 @@ export const getSingleNotification = async (
           model: EmailNotificationDetail,
           as: "emailDetail",
         },
+        {
+          model: UploadedFile,
+          as: "files",
+          attributes: ["id", "originalName", "path", "mimeType", "source"],
+        },
       ],
     });
 
@@ -676,8 +701,6 @@ export const getSingleNotification = async (
           message: "Notification not found.",
         },
       });
-
-    
 
     return res.status(200).json({
       success: true,

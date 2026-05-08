@@ -1,6 +1,9 @@
 import { DataTypes, Model } from "sequelize";
 import { sequelize } from "../sequelize";
 
+import { ForeignKey } from "sequelize";
+import { Notification } from "./Notification";
+
 export class UploadedFile extends Model {
   declare id: string;
   declare filename: string;
@@ -8,7 +11,10 @@ export class UploadedFile extends Model {
   declare mimeType: string;
   declare size: number;
   declare path: string;
-  declare uploadedBy: string;
+  declare uploadedBy: string | null;
+  declare notificationId: ForeignKey<string> | null;
+  declare notification?: Notification;
+  declare source: string;
 }
 
 UploadedFile.init(
@@ -41,6 +47,20 @@ UploadedFile.init(
     uploadedBy: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    notificationId: {
+      type: DataTypes.UUID, // match the PK type of Notification
+      allowNull: true,
+      references: {
+        model: "notifications",
+        key: "id",
+      },
+      onDelete: "SET NULL",
+    },
+    source: {
+      type: DataTypes.ENUM("local", "upload"),
+      allowNull: false,
+      defaultValue: "local",
     },
   },
   {

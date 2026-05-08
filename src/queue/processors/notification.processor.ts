@@ -72,17 +72,27 @@ export const emailWorker = new Worker(
         {
           model: UploadedFile,
           as: "file",
-          attributes: ["path", "originalName", "mimeType"], // path included here
+          attributes: ["path", "originalName"], // path included here
         },
       ],
     });
 
-    if (attachments) {
-      logger.info("Attachments found.");
-    } else {
-      logger.info("No attachments found.");
+    if (attachments.length > 0) {
+      await notification.update({
+        templateSnapshot: {
+          ...notification.templateSnapshot,
+          attachments: attachments.map((a) => ({
+            id: a.id,
+            file: {
+              path: a.file.path,
+              originalName: a.file.originalName,
+            },
+            mimeType: a.mimeType,
+            source: "upload",
+          })),
+        },
+      });
     }
-
     // Map to nodemailer format
     const mailAttachments = attachments.map((a) => ({
       filename: a.file.originalName,
