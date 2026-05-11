@@ -46,7 +46,7 @@ Notification and subscription endpoints require API key authentication.
 
 **Header Format:**
 ```
-Authorization: Bearer <API_KEY>
+x-api-key: <API_KEY>
 ```
 
 API keys have associated scopes that determine allowed actions:
@@ -524,7 +524,7 @@ Upload attachments for email notifications.
 **Request:**
 ```
 POST /api/notification/notify/upload-attachments
-Authorization: Bearer <API_KEY>
+x-api-key: <API_KEY>
 Content-Type: multipart/form-data
 ```
 
@@ -552,7 +552,7 @@ Create and queue an email notification.
 **Request:**
 ```
 POST /api/notification/notify/email
-Authorization: Bearer <API_KEY>
+x-api-key: <API_KEY>
 Content-Type: multipart/form-data
 ```
 
@@ -591,7 +591,7 @@ Create and queue a push notification.
 **Request:**
 ```
 POST /api/notification/notify/push
-Authorization: Bearer <API_KEY>
+x-api-key: <API_KEY>
 Content-Type: application/json
 ```
 
@@ -766,7 +766,7 @@ Get user's push subscription.
 **Request:**
 ```
 GET /api/subscription
-Authorization: Bearer <API_KEY>
+x-api-key: <API_KEY>
 ```
 
 **Response (200 OK):**
@@ -791,7 +791,7 @@ Subscribe to push notifications.
 **Request:**
 ```
 POST /api/subscription/subscribe
-Authorization: Bearer <API_KEY>
+x-api-key: <API_KEY>
 Content-Type: application/json
 ```
 
@@ -823,7 +823,7 @@ Unsubscribe from push notifications.
 **Request:**
 ```
 POST /api/subscription/unsubscribe
-Authorization: Bearer <API_KEY>
+x-api-key: <API_KEY>
 Content-Type: application/json
 ```
 
@@ -1180,7 +1180,7 @@ Creates and queues a notification for delivery through the specified channel.
 ```
 POST /api/notify
 Content-Type: application/json
-Authorization: Bearer <API_KEY>
+x-api-key: <API_KEY>
 Idempotency-Key: <optional-unique-key>
 ```
 
