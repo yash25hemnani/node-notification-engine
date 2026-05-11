@@ -10,15 +10,24 @@ jobs:
       - name: Checkout latest repository code
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install & Build
+        run: |
+          npm install
+          npm run build
+
       - name: Sync files to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "."
+          source: "dist/,package.json,package-lock.json,ecosystem.config.js"
           target: ${{ secrets.SERVER_PATH }}
-          rm: false  # set true to delete files not in repo
 
       - name: Restart application
         uses: appleboy/ssh-action@v1.0.3
@@ -29,7 +38,6 @@ jobs:
           script: |
             cd ${{ secrets.SERVER_PATH }}
             npm install --omit=dev
-            npm run build
-            pm2 reload ecosystem.config.js --update-env
+            pm2 startOrReload ecosystem.config.js --update-env
             pm2 save
             echo "Deployment complete."
