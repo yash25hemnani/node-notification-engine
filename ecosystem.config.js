@@ -2,15 +2,12 @@ module.exports = {
   apps: [
     {
       name: "notification-api",
-      script: "npx",
-      args: "dotenvx run -f /srv/notification_eng/.env -- node dist/server.js",
+      script: "node",
+      args: "dist/server.js",
       cwd: "/srv/notification_eng",
-      instances: 1,
       exec_mode: "fork",
-      autorestart: true,
-      watch: false,
-      max_restarts: 10,
-      restart_delay: 3000,
+      instances: 1,
+      env_file: "/srv/notification_eng/.env",
       env: {
         NODE_ENV: "production",
       },
