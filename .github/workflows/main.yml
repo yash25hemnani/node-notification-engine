@@ -38,6 +38,10 @@ jobs:
           script: |
             cd ${{ secrets.SERVER_PATH }}
             npm install --omit=dev
+            
+            echo "Running migrations..."
+            npx sequelize-cli db:migrate
+            
             pm2 startOrReload ecosystem.config.js --update-env
             pm2 save
             echo "Deployment complete."
