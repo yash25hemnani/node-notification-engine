@@ -1,0 +1,34 @@
+name: Deploy Node Notification Engine
+on:
+  push:
+    branches:
+      - master
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout latest repository code
+        uses: actions/checkout@v4
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            cd /srv/notification-engine
+            
+            echo "Pulling latest code..."
+            git pull origin main
+            
+            echo "Installing dependencies..."
+            npm install
+            
+            echo "Reloading application..."
+            pm2 reload ecosystem.config.js --update-env
+            
+            echo "Saving PM2 process list..."
+            pm2 save
+            
+            echo "Deployment complete."
