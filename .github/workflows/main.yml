@@ -9,25 +9,26 @@ jobs:
     steps:
       - name: Checkout latest repository code
         uses: actions/checkout@v4
-      - name: Deploy to VPS via SSH
+
+      - name: Sync files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "."
+          target: ${{ secrets.SERVER_PATH }}
+          rm: false  # set true to delete files not in repo
+
+      - name: Restart application
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ${{ secrets.SERVER_PATH }}
-            
-            echo "Pulling latest code..."
-            git pull origin main
-            
-            echo "Installing dependencies..."
+            cd  ${{ secrets.SERVER_PATH }}
             npm install
-            
-            echo "Reloading application..."
             pm2 reload ecosystem.config.js --update-env
-            
-            echo "Saving PM2 process list..."
             pm2 save
-            
             echo "Deployment complete."
