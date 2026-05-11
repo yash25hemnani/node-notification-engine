@@ -16,7 +16,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ${{ secrets.SERVER_HOST }}
+            cd ${{ secrets.SERVER_PATH }}
             
             echo "Pulling latest code..."
             git pull origin main
