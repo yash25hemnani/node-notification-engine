@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Node Notification Engine is a comprehensive API service for managing and delivering notifications across multiple channels (email and push notifications). It provides endpoints for creating API keys, managing notification templates, queuing notifications, and managing browser push subscriptions.
+The Node Notification Engine is a comprehensive API service for managing and delivering notifications across multiple channels (email and push notifications). It provides endpoints for user authentication, API key management, template management, notification queuing, file uploads, and browser push subscriptions.
 
 **Base URL:** `http://localhost:3000/api`
 
@@ -13,10 +13,16 @@ The Node Notification Engine is a comprehensive API service for managing and del
 - [Authentication](#authentication)
 - [Endpoints](#endpoints)
   - [Health Check](#health-check)
+  - [Authentication](#authentication-endpoints)
   - [API Key Management](#api-key-management)
   - [Template Management](#template-management)
+  - [Template Attachments](#template-attachments)
   - [Notifications](#notifications)
   - [Push Subscriptions](#push-subscriptions)
+  - [File Management](#file-management)
+  - [Job Monitoring](#job-monitoring)
+  - [Dashboard](#dashboard)
+  - [Miscellaneous](#miscellaneous)
 - [Request/Response Schemas](#requestresponse-schemas)
 - [Error Handling](#error-handling)
 - [Examples](#examples)
@@ -25,17 +31,25 @@ The Node Notification Engine is a comprehensive API service for managing and del
 
 ## Authentication
 
+### JWT Authentication
+
+Admin endpoints require JWT authentication. Obtain tokens through the login endpoint.
+
+**Header Format:**
+```
+Authorization: Bearer <JWT_TOKEN>
+```
+
 ### API Key Authentication
 
-Most endpoints require authentication via an API key header. The API key must be passed in the request headers.
+Notification and subscription endpoints require API key authentication.
 
 **Header Format:**
 ```
 Authorization: Bearer <API_KEY>
 ```
 
-The API key is compared against stored SHA-256 hashes in the database. Each key has associated scopes that determine what actions it can perform:
-
+API keys have associated scopes that determine allowed actions:
 - `email` - Can send email notifications
 - `push` - Can send push notifications
 
@@ -63,32 +77,219 @@ GET /health
 
 ---
 
-### API Key Management
+### Authentication Endpoints
 
-#### POST /create-test-key
+#### POST /auth/signup
 
-Creates a test API key for development and testing purposes.
+Register a new user account.
 
 **Request:**
 ```
-POST /api/create-test-key
+POST /api/auth/signup
+Content-Type: application/json
 ```
 
-**Request Body:** None (uses hardcoded test key)
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "message": "User created successfully",
+  "user": {
+    "id": 1,
+    "email": "user@example.com"
+  }
+}
+```
+
+#### POST /auth/login
+
+Authenticate user and receive JWT tokens.
+
+**Request:**
+```
+POST /api/auth/login
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
 
 **Response (200 OK):**
 ```json
 {
-  "message": "API key created",
-  "key": "my-secret-key"
+  "message": "Login successful",
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
 }
 ```
 
-**Response (500 Error):**
+#### POST /auth/refresh
+
+Refresh access token using refresh token.
+
+**Request:**
+```
+POST /api/auth/refresh
+Content-Type: application/json
+```
+
+**Request Body:**
 ```json
 {
-  "message": "Failed to create API key",
-  "error": "<error details>"
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+#### POST /auth/logout
+
+Logout user by invalidating refresh token.
+
+**Request:**
+```
+POST /api/auth/logout
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+---
+
+### API Key Management
+
+#### GET /keys
+
+Get all API keys for the authenticated user.
+
+**Request:**
+```
+GET /api/keys
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "keys": [
+    {
+      "id": 1,
+      "name": "Production Key",
+      "keyHash": "sha256_hash...",
+      "scopes": ["email", "push"],
+      "isRevealed": false,
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### POST /keys/generate
+
+Generate a new API key.
+
+**Request:**
+```
+POST /api/keys/generate
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "name": "My API Key",
+  "scopes": ["email", "push"]
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "message": "API key generated",
+  "key": {
+    "id": 1,
+    "name": "My API Key",
+    "key": "actual-api-key-here",
+    "scopes": ["email", "push"]
+  }
+}
+```
+
+#### POST /keys/rotate
+
+Rotate an existing API key (generate new key, invalidate old).
+
+**Request:**
+```
+POST /api/keys/rotate
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "id": 1
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "API key rotated",
+  "key": {
+    "id": 1,
+    "name": "My API Key",
+    "key": "new-actual-api-key-here",
+    "scopes": ["email", "push"]
+  }
+}
+```
+
+#### DELETE /keys/:id
+
+Delete an API key.
+
+**Request:**
+```
+DELETE /api/keys/1
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "API key deleted"
 }
 ```
 
@@ -96,7 +297,838 @@ POST /api/create-test-key
 
 ### Template Management
 
-#### POST /create-template
+#### GET /templates
+
+Get all notification templates for the authenticated user.
+
+**Request:**
+```
+GET /api/templates
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "templates": [
+    {
+      "id": 1,
+      "slug": "welcome-email",
+      "channel": "email",
+      "name": "Welcome Email",
+      "subject": "Welcome {{name}}!",
+      "body": "Hello {{name}}, welcome to our platform!",
+      "userId": 1,
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### POST /templates/create
+
+Create a new notification template.
+
+**Request:**
+```
+POST /api/templates/create
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "name": "Welcome Email",
+  "channel": "email"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "message": "Template created successfully",
+  "template": {
+    "id": 1,
+    "slug": "welcome-email",
+    "channel": "email",
+    "name": "Welcome Email",
+    "userId": 1
+  }
+}
+```
+
+#### GET /templates/:id
+
+Get a specific template by ID.
+
+**Request:**
+```
+GET /api/templates/1
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "template": {
+    "id": 1,
+    "slug": "welcome-email",
+    "channel": "email",
+    "name": "Welcome Email",
+    "subject": "Welcome {{name}}!",
+    "body": "Hello {{name}}, welcome to our platform!",
+    "userId": 1,
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+}
+```
+
+#### PATCH /templates/:id
+
+Update a template (add subject and body).
+
+**Request:**
+```
+PATCH /api/templates/1
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "subject": "Welcome {{name}}!",
+  "body": "Hello {{name}}, welcome to our platform!"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Template updated successfully",
+  "template": {
+    "id": 1,
+    "slug": "welcome-email",
+    "channel": "email",
+    "name": "Welcome Email",
+    "subject": "Welcome {{name}}!",
+    "body": "Hello {{name}}, welcome to our platform!",
+    "userId": 1
+  }
+}
+```
+
+#### DELETE /templates/:id
+
+Delete a template.
+
+**Request:**
+```
+DELETE /api/templates/1
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Template deleted successfully"
+}
+```
+
+---
+
+### Template Attachments
+
+#### GET /attachments/:templateId/
+
+Get all attachments for a template.
+
+**Request:**
+```
+GET /api/attachments/1/
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "attachments": [
+    {
+      "id": 1,
+      "templateId": 1,
+      "fileId": 1,
+      "filename": "welcome.pdf",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### POST /attachments/:templateId/
+
+Add an attachment to a template.
+
+**Request:**
+```
+POST /api/attachments/1/
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "fileId": 1
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "message": "Attachment added successfully",
+  "attachment": {
+    "id": 1,
+    "templateId": 1,
+    "fileId": 1,
+    "filename": "welcome.pdf"
+  }
+}
+```
+
+#### DELETE /attachments/:templateId/:attachmentId
+
+Remove an attachment from a template.
+
+**Request:**
+```
+DELETE /api/attachments/1/1
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Attachment removed successfully"
+}
+```
+
+---
+
+### Notifications
+
+#### POST /notification/notify/upload-attachments
+
+Upload attachments for email notifications.
+
+**Request:**
+```
+POST /api/notification/notify/upload-attachments
+Authorization: Bearer <API_KEY>
+Content-Type: multipart/form-data
+```
+
+**Form Data:**
+- `files`: Array of files to upload
+
+**Response (200 OK):**
+```json
+{
+  "message": "Files uploaded successfully",
+  "attachments": [
+    {
+      "id": 1,
+      "filename": "document.pdf",
+      "url": "/uploads/12345678-1234-1234-1234-123456789012.pdf"
+    }
+  ]
+}
+```
+
+#### POST /notification/notify/email
+
+Create and queue an email notification.
+
+**Request:**
+```
+POST /api/notification/notify/email
+Authorization: Bearer <API_KEY>
+Content-Type: multipart/form-data
+```
+
+**Form Data:**
+- `customerId`: "user123"
+- `customerEmail`: "user@example.com"
+- `templateSlug`: "welcome"
+- `data`: JSON string with template variables
+- `to`: (optional) Array of email addresses
+- `cc`: (optional) Array of CC email addresses
+- `bcc`: (optional) Array of BCC email addresses
+- `replyTo`: (optional) Reply-to email address
+- `files`: (optional) Array of attachment files
+- `filePaths`: (optional) Array of file paths
+- `uploadedPaths`: (optional) Array of uploaded file objects
+
+**Response (200 OK):**
+```json
+{
+  "message": "Email notification queued",
+  "notification": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "channel": "email",
+    "customerId": "user123",
+    "customerEmail": "user@example.com",
+    "templateSlug": "welcome",
+    "status": "queued"
+  }
+}
+```
+
+#### POST /notification/notify/push
+
+Create and queue a push notification.
+
+**Request:**
+```
+POST /api/notification/notify/push
+Authorization: Bearer <API_KEY>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "customerId": "user123",
+  "customerEmail": "user@example.com",
+  "templateSlug": "welcome",
+  "data": {
+    "name": "John Doe"
+  }
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Push notification queued",
+  "notification": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "channel": "push",
+    "customerId": "user123",
+    "customerEmail": "user@example.com",
+    "templateSlug": "welcome",
+    "status": "queued"
+  }
+}
+```
+
+#### POST /notification/test/email
+
+Send a test email notification.
+
+**Request:**
+```
+POST /api/notification/test/email
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "templateSlug": "welcome",
+  "data": {
+    "name": "Test User"
+  },
+  "to": ["test@example.com"],
+  "cc": ["cc@example.com"],
+  "bcc": ["bcc@example.com"],
+  "replyTo": "reply@example.com"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Test email sent"
+}
+```
+
+#### POST /notification/test/push
+
+Send a test push notification.
+
+**Request:**
+```
+POST /api/notification/test/push
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "templateSlug": "welcome",
+  "data": {
+    "name": "Test User"
+  },
+  "userId": "test-user-123"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Test push notification sent"
+}
+```
+
+#### GET /notification/queue/jobs
+
+Get queued notification jobs.
+
+**Request:**
+```
+GET /api/notification/queue/jobs
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "jobs": [
+    {
+      "id": "job-123",
+      "channel": "email",
+      "status": "waiting",
+      "data": {
+        "userId": "user123",
+        "templateSlug": "welcome"
+      },
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### GET /notification/:notificationId
+
+Get a specific notification by ID.
+
+**Request:**
+```
+GET /api/notification/550e8400-e29b-41d4-a716-446655440000
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "notification": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "channel": "email",
+    "customerId": "user123",
+    "customerEmail": "user@example.com",
+    "templateSlug": "welcome",
+    "status": "sent",
+    "jobId": "job-123",
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "sentAt": "2024-01-01T00:00:05.000Z"
+  }
+}
+```
+
+#### DELETE /notification/:notificationId
+
+Delete a notification (production environment requires confirmation).
+
+**Request:**
+```
+DELETE /api/notification/550e8400-e29b-41d4-a716-446655440000
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Notification deleted"
+}
+```
+
+---
+
+### Push Subscriptions
+
+#### GET /subscription
+
+Get user's push subscription.
+
+**Request:**
+```
+GET /api/subscription
+Authorization: Bearer <API_KEY>
+```
+
+**Response (200 OK):**
+```json
+{
+  "subscription": {
+    "id": 1,
+    "customerId": "user123",
+    "endpoint": "https://fcm.googleapis.com/fcm/send/...",
+    "keys": {
+      "p256dh": "p256dh-key",
+      "auth": "auth-key"
+    }
+  }
+}
+```
+
+#### POST /subscription/subscribe
+
+Subscribe to push notifications.
+
+**Request:**
+```
+POST /api/subscription/subscribe
+Authorization: Bearer <API_KEY>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "customerId": "user123",
+  "subscription": {
+    "endpoint": "https://fcm.googleapis.com/fcm/send/...",
+    "keys": {
+      "p256dh": "p256dh-key",
+      "auth": "auth-key"
+    }
+  }
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "message": "Subscribed to push notifications"
+}
+```
+
+#### POST /subscription/unsubscribe
+
+Unsubscribe from push notifications.
+
+**Request:**
+```
+POST /api/subscription/unsubscribe
+Authorization: Bearer <API_KEY>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "customerId": "user123"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Unsubscribed from push notifications"
+}
+```
+
+#### GET /subscription/internal
+
+Get internal user subscription (admin).
+
+**Request:**
+```
+GET /api/subscription/internal
+Authorization: Bearer <JWT_TOKEN>
+```
+
+#### POST /subscription/internal-subscribe
+
+Create internal subscription (admin).
+
+**Request:**
+```
+POST /api/subscription/internal-subscribe
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+#### POST /subscription/internal-unsubscribe
+
+Remove internal subscription (admin).
+
+**Request:**
+```
+POST /api/subscription/internal-unsubscribe
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+---
+
+### File Management
+
+#### POST /files
+
+Upload a file.
+
+**Request:**
+```
+POST /api/files
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: multipart/form-data
+```
+
+**Form Data:**
+- `file`: File to upload
+
+**Response (201 Created):**
+```json
+{
+  "message": "File uploaded successfully",
+  "file": {
+    "id": 1,
+    "filename": "document.pdf",
+    "originalName": "my-document.pdf",
+    "mimeType": "application/pdf",
+    "size": 12345,
+    "url": "/uploads/12345678-1234-1234-1234-123456789012.pdf"
+  }
+}
+```
+
+#### GET /files/:id
+
+Get file information.
+
+**Request:**
+```
+GET /api/files/1
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "file": {
+    "id": 1,
+    "filename": "document.pdf",
+    "originalName": "my-document.pdf",
+    "mimeType": "application/pdf",
+    "size": 12345,
+    "url": "/uploads/12345678-1234-1234-1234-123456789012.pdf",
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+}
+```
+
+#### DELETE /files/:id
+
+Delete a file.
+
+**Request:**
+```
+DELETE /api/files/1
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "File deleted successfully"
+}
+```
+
+---
+
+### Job Monitoring
+
+#### GET /jobs/:channel/:jobId
+
+Get job details by channel and job ID.
+
+**Request:**
+```
+GET /api/jobs/email/job-123
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response (200 OK):**
+```json
+{
+  "job": {
+    "id": "job-123",
+    "channel": "email",
+    "status": "completed",
+    "data": {
+      "userId": "user123",
+      "templateSlug": "welcome"
+    },
+    "result": {
+      "messageId": "1234567890"
+    },
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "completedAt": "2024-01-01T00:00:05.000Z"
+  }
+}
+```
+
+---
+
+### Dashboard
+
+#### GET /dashboard/stream
+
+Get dashboard stream data (Server-Sent Events).
+
+**Request:**
+```
+GET /api/dashboard/stream
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response:** Server-Sent Events stream with real-time data.
+
+---
+
+### Miscellaneous
+
+#### GET /open-file
+
+Open file endpoint (purpose unclear from code).
+
+**Request:**
+```
+GET /open-file
+```
+
+---
+
+## Request/Response Schemas
+
+### Common Response Format
+
+All API responses follow this general structure:
+
+**Success Response:**
+```json
+{
+  "message": "Operation successful",
+  "data": { ... } // Optional data object
+}
+```
+
+**Error Response:**
+```json
+{
+  "message": "Error description",
+  "error": "Detailed error information" // Optional
+}
+```
+
+### Validation Errors
+
+Validation errors return detailed field-specific errors:
+
+```json
+{
+  "message": "Validation failed",
+  "errors": [
+    {
+      "field": "email",
+      "message": "Invalid email format"
+    }
+  ]
+}
+```
+
+---
+
+## Error Handling
+
+The API uses standard HTTP status codes:
+
+- `200 OK` - Success
+- `201 Created` - Resource created
+- `400 Bad Request` - Invalid request data
+- `401 Unauthorized` - Missing or invalid authentication
+- `403 Forbidden` - Insufficient permissions
+- `404 Not Found` - Resource not found
+- `409 Conflict` - Resource conflict (e.g., duplicate)
+- `422 Unprocessable Entity` - Validation errors
+- `500 Internal Server Error` - Server error
+
+---
+
+## Examples
+
+### Creating a Template
+
+```bash
+curl -X POST http://localhost:3000/api/templates/create \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "slug": "welcome",
+    "channel": "email",
+    "name": "Welcome Email",
+    "subject": "Welcome {{name}}!",
+    "body": "Hello {{name}}, welcome to our platform!"
+  }'
+```
+
+### Sending an Email Notification
+
+```bash
+curl -X POST http://localhost:3000/api/notification/notify/email \
+  -H "Authorization: Bearer your-api-key" \
+  -F "customerId=user123" \
+  -F "customerEmail=user@example.com" \
+  -F "templateSlug=welcome" \
+  -F 'data={"name":"John Doe"}'
+```
+
+### Sending a Push Notification
+
+```bash
+curl -X POST http://localhost:3000/api/notification/notify/push \
+  -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": "user123",
+    "customerEmail": "user@example.com",
+    "templateSlug": "welcome",
+    "data": {
+      "name": "John Doe"
+    }
+  }'
+```
+
+### Managing API Keys
+
+```bash
+# Generate new API key
+curl -X POST http://localhost:3000/api/keys/generate \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Production Key",
+    "scopes": ["email", "push"]
+  }'
+
+# List API keys
+curl -X GET http://localhost:3000/api/keys \
+  -H "Authorization: Bearer your-jwt-token"
+```
 
 Creates a notification template that can be reused across notifications. Templates support Handlebars syntax for variable interpolation.
 
