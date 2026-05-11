@@ -3,7 +3,8 @@ module.exports = {
     {
       name: 'notification-api',
       script: 'npm',
-      args: 'run start',        // node dist/server.js
+      args: 'run start',
+      cwd: '/srv/notification_eng',  
       instances: 1,
       autorestart: true,
       watch: false,
@@ -16,7 +17,8 @@ module.exports = {
     {
       name: 'notification-worker',
       script: 'npm',
-      args: 'run start:worker',  // node dist/worker.js
+      args: 'run start:worker',
+      cwd: '/srv/notification_eng', 
       instances: 2,
       exec_mode: 'fork',
       autorestart: true,
