@@ -1,0 +1,34 @@
+name: Deploy Node Notification Engine
+on:
+  push:
+    branches:
+      - master
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout latest repository code
+        uses: actions/checkout@v4
+
+      - name: Sync files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "."
+          target: ${{ secrets.SERVER_PATH }}
+          rm: false  # set true to delete files not in repo
+
+      - name: Restart application
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd  ${{ secrets.SERVER_PATH }}
+            npm install
+            pm2 reload ecosystem.config.js --update-env
+            pm2 save
+            echo "Deployment complete."
