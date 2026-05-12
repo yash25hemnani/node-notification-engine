@@ -13,6 +13,7 @@ import { renderTemplate } from "../../utils/template";
 import { emailProvider } from "../../providers/email";
 import { sendPush } from "../../providers/push";
 import path from "node:path";
+import { log } from "node:console";
 
 // ── Email Worker ──────────────────────────────────────────────────────────────
 export const emailWorker = new Worker(
@@ -92,15 +93,25 @@ export const emailWorker = new Worker(
           })),
         },
       });
+    } else {
+      logger.info("No attachments found for template.");
     }
+
     // Map to nodemailer format
-    const mailAttachments = attachments.map((a) => ({
-      filename: a.file.originalName,
-      path: path.join(process.cwd(), a.file.path),
-    }));
+    const mailAttachments =
+      attachments.length > 0
+        ? attachments.map((a) => ({
+            filename: a.file.originalName,
+            path: path.join(process.cwd(), a.file.path),
+          }))
+        : [];
+
+    console.log("Mail Attachments from template:", mailAttachments);
+
+    console.log("File paths: ", filePaths);
 
     // If filePaths exist, add them to mail attachments as well
-    if (filePaths.length > 0) {
+    if (filePaths && filePaths.length > 0) {
       console.log("Worker received file paths");
       filePaths.forEach((filePath: string) => {
         const filename = path.basename(filePath);
@@ -110,6 +121,8 @@ export const emailWorker = new Worker(
         });
       });
       console.log("added to attachment list");
+    } else {
+      logger.info("No file paths provided in job data.");
     }
 
     if (uploadedPaths && uploadedPaths.length > 0) {
@@ -121,7 +134,10 @@ export const emailWorker = new Worker(
         });
       });
       console.log("Added uploaded files to attachment list");
+    } else {
+      logger.info("No uploaded file paths provided in job data.");
     }
+
     try {
       await emailProvider.sendEmail(
         notification.recipient,
