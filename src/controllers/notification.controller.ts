@@ -271,7 +271,7 @@ export const createPushNotification = async (
     }
 
     const subscriptions = await BrowserSubscription.findAll({
-      where: { customerId },
+      where: { customerEmail },
     });
 
     if (!subscriptions.length)
