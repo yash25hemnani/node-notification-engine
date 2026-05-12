@@ -11,7 +11,7 @@ import dashboardRoutes from "./routes/dashboard.routes";
 import fileRoutes from "./routes/files.routes";
 import templateAttachmentRoutes from "./routes/templateAttachment.routes";
 import miscRoutes from "./routes/misc.routes";
-import jobRoutes from "./routes/job.routes"
+import jobRoutes from "./routes/job.routes";
 
 /**
  * Express Setup
@@ -22,7 +22,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://notification.gxpress.in",
+      "https://notification.gxpress.in",
+    ],
     credentials: true,
   }),
 );
@@ -44,7 +49,6 @@ app.use("/api/attachments/:templateId/", templateAttachmentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/files", fileRoutes);
 app.use("/api/jobs", jobRoutes);
-
 
 app.use("/uploads", express.static("uploads"));
 app.use("/open-file", miscRoutes);

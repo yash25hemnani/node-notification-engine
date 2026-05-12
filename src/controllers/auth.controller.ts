@@ -104,6 +104,13 @@ export const handleLogin = async (req: Request, res: Response<ApiResponse>) => {
 
   const refreshToken = generateRefreshToken();
 
+  if (!refreshToken) {
+    return res.status(401).json({
+      success: false,
+      error: { code: "MISSING_TOKEN", message: "No refresh token provided" },
+    });
+  }
+
   await RefreshToken.create({
     userId: user.id,
     tokenHash: hashToken(refreshToken),
@@ -120,7 +127,7 @@ export const handleLogin = async (req: Request, res: Response<ApiResponse>) => {
   return res.status(200).json({
     success: true,
     data: {
-       user: {
+      user: {
         id: user.id,
         email: user.email,
         username: user.username,
@@ -174,7 +181,7 @@ export const handleRefresh = async (
   return res.status(200).json({
     success: true,
     data: {
-       user: {
+      user: {
         id: token.user?.id,
         email: token.user?.email,
         username: token.user?.username,
