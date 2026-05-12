@@ -26,7 +26,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "dist/,uploads/,src/db/migrations/,config/,.sequelizerc,package.json,package-lock.json,ecosystem.config.js"
+          source: "dist/,uploads/,.sequelizerc,package.json,package-lock.json,ecosystem.config.js"
           target: ${{ secrets.SERVER_PATH }}
 
       - name: Restart application
@@ -40,7 +40,7 @@ jobs:
             npm install --omit=dev
             
             echo "Running migrations..."
-            npx sequelize-cli db:migrate
+            NODE_ENV=production npx sequelize-cli db:migrate
             
             pm2 startOrReload ecosystem.config.js --update-env
             pm2 save
