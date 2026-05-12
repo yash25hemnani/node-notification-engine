@@ -26,7 +26,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "dist/,uploads/,package.json,package-lock.json,ecosystem.config.js"
+          source: "dist/,uploads/,src/db/migrations/,config/,.sequelizerc,package.json,package-lock.json,ecosystem.config.js"
           target: ${{ secrets.SERVER_PATH }}
 
       - name: Restart application
