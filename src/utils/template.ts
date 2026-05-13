@@ -3,8 +3,11 @@ import Handlebars from "handlebars";
 // Inject data in HTML and return
 export function renderTemplate(
   template: string,
-  data: Record<string, any>
+  data: Record<string, any>,
+  options?: { escape?: boolean }
 ) {
-  const compiled = Handlebars.compile(template);
+  const compiled = Handlebars.compile(template, { 
+    noEscape: !(options?.escape ?? true)  // escape by default
+  });
   return compiled(data);
 }

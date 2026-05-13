@@ -205,11 +205,13 @@ export const pushWorker = new Worker(
     const renderedSubject = renderTemplate(
       template.subject,
       notification.data as any,
+      { escape: false } // allow HTML in push titles 
     );
 
     const renderedBody = renderTemplate(
       template.body,
       notification.data as any,
+      { escape: false } // allow HTML in push body
     );
 
     const subscription = await BrowserSubscription.findOne({
