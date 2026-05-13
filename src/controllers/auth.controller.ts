@@ -161,6 +161,16 @@ export const handleRefresh = async (
     // Get refresh token from cookies
     const refreshToken = req.cookies?.refreshToken;
 
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: "MISSING_TOKEN",
+          message: "Refresh token not provided",
+        },
+      });
+    }
+
     const hashed = hashToken(refreshToken);
 
     // Find token
