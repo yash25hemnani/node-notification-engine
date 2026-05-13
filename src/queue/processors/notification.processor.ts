@@ -202,6 +202,11 @@ export const pushWorker = new Worker(
 
     logger.info("Template found");
 
+    const renderedSubject = renderTemplate(
+      template.subject,
+      notification.data as any,
+    );
+
     const renderedBody = renderTemplate(
       template.body,
       notification.data as any,
@@ -227,7 +232,7 @@ export const pushWorker = new Worker(
 
     try {
       await sendPush(subscription, {
-        title: template.subject,
+        title: renderedSubject,
         body: renderedBody,
       });
 
