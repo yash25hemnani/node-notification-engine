@@ -1,4 +1,4 @@
-import { Worker } from "bullmq";
+import { UnrecoverableError, Worker } from "bullmq";
 import { redis } from "../index";
 import { logger } from "../../utils/logger";
 import {
@@ -169,7 +169,7 @@ export const emailWorker = new Worker(
   { connection: redis },
 );
 
-// ── Push Worker ───────────────────────────────────────────────────────────────
+
 export const pushWorker = new Worker(
   "push-queue",
   async (job) => {
@@ -179,7 +179,7 @@ export const pushWorker = new Worker(
     logger.info(`Processing push notification ${notificationId}`);
 
     const notification = await Notification.findByPk(notificationId);
-    if (!notification) throw new Error("Notification not found.");
+    if (!notification) throw new UnrecoverableError("Notification not found.");
 
     notification.jobId = job.id ?? "";
     await notification.save();
@@ -192,9 +192,13 @@ export const pushWorker = new Worker(
       },
     });
 
-    if (!template) throw new Error("Template not found.");
-    if (!template.body || !template.subject)
-      throw new Error("Template details not completed.");
+    // Template missing or incomplete — no point retrying, fail immediately
+    if (!template) {
+      throw new UnrecoverableError("Template not found.");
+    }
+    if (!template.body || !template.subject) {
+      throw new UnrecoverableError("Template details not completed.");
+    }
 
     logger.info("Template found");
 
@@ -203,17 +207,17 @@ export const pushWorker = new Worker(
       notification.data as any,
     );
 
-    // Look up subscription directly by endpoint stored on notification
     const subscription = await BrowserSubscription.findOne({
       where: { endpoint: notification.recipient },
     });
 
+    // Subscription doesn't exist locally — no point retrying
     if (!subscription) {
       notification.status = "failed";
       notification.failedReason = "Subscription no longer exists.";
       await notification.save();
       logger.warn(`Subscription not found for endpoint, skipping.`);
-      return;
+      throw new UnrecoverableError("Subscription not found, skipping retries.");
     }
 
     logger.info("Subscription found");
@@ -233,21 +237,35 @@ export const pushWorker = new Worker(
 
       logger.info(`Push sent: ${notification.id}`);
     } catch (err: any) {
-      // Subscription is gone on the push service side — clean it up
-      if (err.statusCode === 410) {
+      const statusCode = err.statusCode as number | undefined;
+
+      if (statusCode === 410 || statusCode === 403) {
+        // 410 = subscription expired, 403 = VAPID key mismatch
+        // Both mean the subscription is permanently invalid — delete and don't retry
         await subscription.destroy();
-        logger.warn(`Stale subscription removed: ${subscription.id}`);
-      }
-      if (err.statusCode === 403) {
-        await subscription.destroy();
-        logger.warn(`Unauthorized subscription removed: ${subscription.id}`);
+        logger.warn(
+          `Subscription removed (${statusCode}): ${subscription.id}`,
+        );
+
+        notification.status = "failed";
+        notification.attemptsMade = job.attemptsMade;
+        notification.failedReason = err.message;
+        await notification.save();
+
+        // UnrecoverableError prevents BullMQ from retrying a known-dead subscription
+        throw new UnrecoverableError(
+          `Subscription permanently invalid (${statusCode}), removed.`,
+        );
       }
 
+      // For all other errors (5xx, network issues etc.) — update notification
+      // and re-throw a normal error so BullMQ retries per queue config
       notification.status = "failed";
       notification.attemptsMade = job.attemptsMade;
       notification.failedReason = err.message;
       await notification.save();
-      logger.error(err, "Push notification failed");
+
+      logger.error(err, `Push failed (retryable): ${notification.id}`);
       throw err;
     }
   },
