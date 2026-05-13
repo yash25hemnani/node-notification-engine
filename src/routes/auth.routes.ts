@@ -11,7 +11,7 @@ const router = Router();
 
 router.post("/login", handleLogin);
 router.post("/signup", handleSignup);
-router.post("/refresh", handleRefresh);
+router.get("/refresh", handleRefresh);
 router.post("/logout", handleLogout)
 router.post("/create", createTemplate)
 
