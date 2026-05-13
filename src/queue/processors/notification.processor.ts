@@ -238,6 +238,10 @@ export const pushWorker = new Worker(
         await subscription.destroy();
         logger.warn(`Stale subscription removed: ${subscription.id}`);
       }
+      if (err.statusCode === 403) {
+        await subscription.destroy();
+        logger.warn(`Unauthorized subscription removed: ${subscription.id}`);
+      }
 
       notification.status = "failed";
       notification.attemptsMade = job.attemptsMade;
