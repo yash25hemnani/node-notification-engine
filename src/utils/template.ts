@@ -6,6 +6,7 @@ export function renderTemplate(
   data: Record<string, any>,
   options?: { escape?: boolean }
 ) {
+  console.log(template)
   const compiled = Handlebars.compile(template, { 
     noEscape: !(options?.escape ?? true)  // escape by default
   });

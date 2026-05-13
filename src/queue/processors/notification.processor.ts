@@ -207,6 +207,7 @@ export const pushWorker = new Worker(
       notification.data as any,
       { escape: false } // allow HTML in push titles 
     );
+    
 
     const renderedBody = renderTemplate(
       template.body,
