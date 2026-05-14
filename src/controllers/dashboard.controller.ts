@@ -25,7 +25,14 @@ const broadcastToUser = (userId: string, data: object) => {
 };
 
 // Fetch and broadcast stats for a specific user from DB
-const sendQueueStats = async (userId: string) => {
+const sendQueueStats = async (userId: string, role?: string) => {
+  // Build query based on role. Admin can see all, other users can see only their data
+  const buildWhereQuery = (channel: string, status: string) => ({
+    ...(role !== "admin" ? { createdBy: userId } : {}),
+    channel,
+    status,
+  });
+
   const [
     emailWaiting,
     emailActive,
@@ -37,28 +44,28 @@ const sendQueueStats = async (userId: string) => {
     pushFailed,
   ] = await Promise.all([
     Notification.count({
-      where: { createdBy: userId, channel: "email", status: "waiting" },
+      where: buildWhereQuery("email", "waiting"),
     }),
     Notification.count({
-      where: { createdBy: userId, channel: "email", status: "active" },
+      where: buildWhereQuery("email", "active"),
     }),
     Notification.count({
-      where: { createdBy: userId, channel: "email", status: "completed" },
+      where: buildWhereQuery("email", "completed"),
     }),
     Notification.count({
-      where: { createdBy: userId, channel: "email", status: "failed" },
+      where: buildWhereQuery("email", "failed"),
     }),
     Notification.count({
-      where: { createdBy: userId, channel: "push", status: "waiting" },
+      where: buildWhereQuery("push", "waiting"),
     }),
     Notification.count({
-      where: { createdBy: userId, channel: "push", status: "active" },
+      where: buildWhereQuery("push", "active"),
     }),
     Notification.count({
-      where: { createdBy: userId, channel: "push", status: "completed" },
+      where: buildWhereQuery("push", "completed"),
     }),
     Notification.count({
-      where: { createdBy: userId, channel: "push", status: "failed" },
+      where: buildWhereQuery("push", "failed"),
     }),
   ]);
 
@@ -167,7 +174,7 @@ export const dashboardStream = async (req: AuthRequest, res: Response) => {
   clients.get(userId)!.add(res);
 
   // Send initial stats for this user
-  await sendQueueStats(userId);
+  await sendQueueStats(userId, req.user.role);
 
   // Remove client on disconnect
   req.on("close", () => {
@@ -202,7 +209,7 @@ export const getQueueJobs = async (
       });
 
     const where = {
-      createdBy: id,
+      ...(req.user.role !== "admin" ? { createdBy: id } : {}),
       channel: queue as string,
       ...(state && state !== "all" ? { status: state as string } : {}),
     };
