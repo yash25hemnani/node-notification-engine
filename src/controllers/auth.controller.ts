@@ -65,6 +65,7 @@ export const handleSignup = async (
           id: newUser.id,
           email: newUser.email,
           username: newUser.username,
+          role: newUser.role
         },
         accessToken: accessToken,
       },
@@ -140,6 +141,7 @@ export const handleLogin = async (req: Request, res: Response<ApiResponse>) => {
           id: user.id,
           email: user.email,
           username: user.username,
+          role: user.role,
         },
         accessToken: accessToken,
       },
