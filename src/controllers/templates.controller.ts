@@ -222,6 +222,7 @@ export const deleteTemplate = async (
       data: null,
     });
   } catch (error) {
+    console.log(error)
     return res.status(500).json({
       success: false,
       error: {
