@@ -12,6 +12,7 @@ import fileRoutes from "./routes/files.routes";
 import templateAttachmentRoutes from "./routes/templateAttachment.routes";
 import miscRoutes from "./routes/misc.routes";
 import jobRoutes from "./routes/job.routes";
+import adminRoutes from "./routes/admin.routes";
 
 /**
  * Express Setup
@@ -49,6 +50,8 @@ app.use("/api/attachments/:templateId/", templateAttachmentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/files", fileRoutes);
 app.use("/api/jobs", jobRoutes);
+
+app.use("/api/admin", adminRoutes);
 
 app.use("/uploads", express.static("uploads"));
 app.use("/open-file", miscRoutes);
