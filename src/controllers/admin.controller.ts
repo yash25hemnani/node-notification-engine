@@ -13,20 +13,23 @@ export const getAllSubscriptions = async (
 
     const { customerEmail } = req.query;
 
-    // Group subscriptions by email
-    const subscriptions = await BrowserSubscription.findAll({
-      group: ["customerEmail", "customerId"],
-      attributes: [
-        "customerEmail",
-        "customerId",
-        [Sequelize.fn("COUNT", Sequelize.col("customerEmail")), "count"],
-      ],
-      where: customerEmail
-        ? {
-            customerEmail: customerEmail as string,
-          }
-        : undefined,
-    });
+    let subscriptions;
+
+    if (customerEmail) {
+      subscriptions = await BrowserSubscription.findAll({
+        attributes: ["id", "customerEmail", "customerId", "endpoint"],
+        where: { customerEmail: customerEmail as string },
+      });
+    } else {
+      subscriptions = await BrowserSubscription.findAll({
+        group: ["customerEmail", "customerId"],
+        attributes: [
+          "customerEmail",
+          "customerId",
+          [Sequelize.fn("COUNT", Sequelize.col("customerEmail")), "count"],
+        ],
+      });
+    }
 
     if (!subscriptions.length)
       return res.status(404).json({
@@ -40,11 +43,14 @@ export const getAllSubscriptions = async (
     return res.status(200).json({
       success: true,
       data: {
-        // Map through subscriptions and convert count to number
-        subscriptions: subscriptions.map((s) => ({
-          ...s.toJSON(),
-          count: parseInt(s.get("count") as string),
-        })),
+        // If customerEmail is provided, return count for that email, else return count for each email group
+        ...(customerEmail ? { count: subscriptions.length } : {}),
+        subscriptions: customerEmail
+          ? subscriptions.map((s) => s.toJSON())
+          : subscriptions.map((s) => ({
+              ...s.toJSON(),
+              count: parseInt(s.get("count") as string),
+            })),
       },
     });
   } catch (error) {
