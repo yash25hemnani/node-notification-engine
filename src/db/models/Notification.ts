@@ -94,7 +94,7 @@ Notification.init(
     },
     templateId: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: "templates",
         key: "id",
