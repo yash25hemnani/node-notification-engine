@@ -27,17 +27,16 @@ interface NotificationAttributes {
   idempotencyKey: string | null;
 }
 
-interface NotificationCreationAttributes
-  extends Optional<
-    NotificationAttributes,
-    | "id"
-    | "status"
-    | "displayId"
-    | "attemptsMade"
-    | "failedReason"
-    | "jobId"
-    | "idempotencyKey"
-  > {}
+interface NotificationCreationAttributes extends Optional<
+  NotificationAttributes,
+  | "id"
+  | "status"
+  | "displayId"
+  | "attemptsMade"
+  | "failedReason"
+  | "jobId"
+  | "idempotencyKey"
+> {}
 
 export class Notification
   extends Model<NotificationAttributes, NotificationCreationAttributes>
@@ -100,8 +99,8 @@ Notification.init(
         model: "templates",
         key: "id",
       },
-      // Prevent deleting a template that has associated notifications
-      onDelete: "RESTRICT",
+      // Keep notification, just remove template reference if template is deleted
+      onDelete: "SET NULL",
     },
     templateSlug: {
       type: DataTypes.STRING,
