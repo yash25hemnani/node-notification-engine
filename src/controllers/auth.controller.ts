@@ -6,7 +6,9 @@ import {
   generateAccessToken,
   generateRefreshToken,
   hashToken,
-} from "../utils/tokens";import { logger } from "../utils/logger";import { success } from "zod";
+} from "../utils/tokens";
+import { logger } from "../utils/logger";
+import { success } from "zod";
 import { ENV } from "../config/env";
 
 const REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -53,8 +55,8 @@ export const handleSignup = async (
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: ENV.NODE_ENV === "production", // true in production
-      sameSite: "lax",
+      secure: ENV.NODE_ENV === "production",
+      sameSite: ENV.NODE_ENV === "production" ? "lax" : "none",
       maxAge: REFRESH_TOKEN_EXPIRY,
     });
 
@@ -65,7 +67,7 @@ export const handleSignup = async (
           id: newUser.id,
           email: newUser.email,
           username: newUser.username,
-          role: newUser.role
+          role: newUser.role,
         },
         accessToken: accessToken,
       },
@@ -129,8 +131,8 @@ export const handleLogin = async (req: Request, res: Response<ApiResponse>) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: ENV.NODE_ENV === "production", // true in production
-      sameSite: "lax",
+      secure: ENV.NODE_ENV === "production",
+      sameSite: ENV.NODE_ENV === "production" ? "lax" : "none",
       maxAge: REFRESH_TOKEN_EXPIRY,
     });
 
@@ -252,8 +254,8 @@ export const handleLogout = async (
     // Clear cookie
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      sameSite: "lax",
-      secure: ENV.NODE_ENV === "production", // true in production
+      sameSite: ENV.NODE_ENV === "production" ? "lax" : "none",
+      secure: ENV.NODE_ENV === "production",
     });
 
     return res.status(200).json({
