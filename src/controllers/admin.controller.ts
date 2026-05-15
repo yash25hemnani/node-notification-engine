@@ -15,7 +15,7 @@ export const getAllSubscriptions = async (
   try {
     if (!req.user) return unauthorized(res);
 
-    //
+    // Extract pagination parameters and search query
     const { search } = req.query;
     const { page, limit, offset } = getPaginationParams(req.query);
 
