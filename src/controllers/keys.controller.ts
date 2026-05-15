@@ -10,40 +10,51 @@ export const getApiKey = async (
   req: AuthRequest,
   res: Response<ApiResponse>,
 ) => {
-  if (!req.user) {
-    return res.status(401).json({
-      success: false,
-      error: {
-        code: "UNAUTHORIZED",
-        message: "User is not authorized.",
-      },
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "User is not authorized.",
+        },
+      });
+    }
+
+    console.log(req.user);
+    const { id } = req.user;
+    console.log(id);
+
+    const apiKey = await ApiKey.findOne({
+      where: { userId: id },
+      attributes: ["id", "name", "scopes", "createdAt"], // ← never return key_hash
     });
-  }
 
-  console.log(req.user);
-  const { id } = req.user;
-  console.log(id);
+    if (!apiKey) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          apiKey: null,
+        },
+      });
+    }
 
-  const apiKey = await ApiKey.findOne({
-    where: { userId: id },
-    attributes: ["id", "name", "scopes", "createdAt"], // ← never return key_hash
-  });
-
-  if (!apiKey) {
     return res.status(200).json({
       success: true,
       data: {
-        apiKey: null,
+        apiKey,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error.",
       },
     });
   }
-
-  return res.status(200).json({
-    success: true,
-    data: {
-      apiKey,
-    },
-  });
 };
 
 export const generateApiKey = async (
@@ -124,7 +135,7 @@ export const rotateApiKey = async (
   }
 
   const { id } = req.user;
-  console.log(id)
+  console.log(id);
 
   // Check if a key already exists for this user
   const existingApiKey = await ApiKey.findOne({
@@ -220,4 +231,3 @@ export const deleteApiKey = async (
     });
   }
 };
-
