@@ -1,20 +1,24 @@
-import { Request, Response } from "express";
+import { Response } from "express";
+import fs from "fs";
+import mime from "mime-types";
+import path from "path";
+import { Op } from "sequelize";
 import {
   BrowserSubscription,
   EmailNotificationDetail,
   Notification,
   Template,
-  TemplateAttachment,
   UploadedFile,
   User,
 } from "../db/models";
 import { enqueueNotification } from "../queue/jobs/notification.job";
-import { logger } from "../utils/logger";
 import { ApiKeyRequest, ApiResponse, AuthRequest } from "../types/api";
 import { unauthorized } from "../utils/api";
-import fs from "fs";
-import path from "path";
-import mime from "mime-types";
+import { logger } from "../utils/logger";
+import {
+  buildPaginatedResponse,
+  getPaginationParams,
+} from "../utils/pagination";
 
 export const uploadEmailAttachments = async (
   req: ApiKeyRequest,
@@ -620,7 +624,9 @@ export const getQueueNotifications = async (
     if (!req.user) return unauthorized(res);
 
     const { id } = req.user;
-    const { queue, state } = req.query;
+    // Get pagination params
+    const { page, limit, offset } = getPaginationParams(req.query);
+    const { queue, state, search } = req.query;
 
     if (!queue)
       return res.status(400).json({
@@ -632,16 +638,27 @@ export const getQueueNotifications = async (
       });
 
     const where = {
+      // Admins can see all notifications; non-admins only see their own
       ...(req.user.role !== "admin" ? { createdBy: id } : {}),
       channel: queue as string,
+      // If state is provided and not "all", filter by status; otherwise, return all states
       ...(state && state !== "all" ? { status: state as string } : {}),
+      // If search is provided, filter by customerEmail or displayId containing the search term; otherwise, return all
+      ...(search
+        ? {
+            [Op.or]: [
+              { customerEmail: { [Op.like]: `%${search}%` } },
+              { displayId: { [Op.like]: `%${search}%` } },
+            ],
+          }
+        : {}),
     };
 
-
-    const notifications = await Notification.findAll({
+    const { rows: notifications, count } = await Notification.findAndCountAll({
       where,
       order: [["createdAt", "DESC"]],
-      limit: 20,
+      limit: limit,
+      offset: offset,
       attributes: [
         "id",
         "displayId",
@@ -656,10 +673,11 @@ export const getQueueNotifications = async (
       ],
     });
 
-    return res.status(200).json({
-      success: true,
-      data: { jobs: notifications },
-    });
+    return res
+      .status(200)
+      .json(
+        buildPaginatedResponse(notifications, count, { page, limit, offset }),
+      );
   } catch (error) {
     logger.error(error);
     return res.status(500).json({
