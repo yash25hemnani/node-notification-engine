@@ -2,7 +2,7 @@ import { ApiResponse, AuthRequest } from "../types/api";
 import { Response } from "express";
 import { unauthorized } from "../utils/api";
 import { BrowserSubscription } from "../db/models";
-import { Sequelize } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 export const getAllSubscriptions = async (
   req: AuthRequest,
@@ -11,7 +11,7 @@ export const getAllSubscriptions = async (
   try {
     if (!req.user) return unauthorized(res);
 
-    const { customerEmail } = req.query;
+    const { customerEmail, search } = req.query;
 
     let subscriptions;
 
@@ -19,6 +19,11 @@ export const getAllSubscriptions = async (
       subscriptions = await BrowserSubscription.findAll({
         attributes: ["id", "customerEmail", "customerId", "endpoint"],
         where: { customerEmail: customerEmail as string },
+        ...(search
+          ? {
+              [Op.or]: [{ customerEmail: { [Op.like]: `%${search}%` } }],
+            }
+          : {}),
       });
     } else {
       subscriptions = await BrowserSubscription.findAll({
@@ -28,6 +33,11 @@ export const getAllSubscriptions = async (
           "customerId",
           [Sequelize.fn("COUNT", Sequelize.col("customerEmail")), "count"],
         ],
+        ...(search
+          ? {
+              [Op.or]: [{ customerEmail: { [Op.like]: `%${search}%` } }],
+            }
+          : {}),
       });
     }
 
