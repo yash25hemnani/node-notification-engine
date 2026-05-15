@@ -88,7 +88,7 @@ const sendQueueStats = async (userId: string, role?: string) => {
 
 // Attach worker event listeners once
 /**
- * Attach events to worker and on each event change, 
+ * Attach events to worker and on each event change,
  * send the newest event and then the queue stats
  */
 const attachWorkerEvents = () => {
@@ -208,6 +208,17 @@ export const getQueueJobs = async (
         },
       });
 
+    console.log(
+      "Fetching jobs for queue:",
+      queue,
+      "with state:",
+      state,
+      "for user:",
+      id,
+      "with role:",
+      req.user.role,
+    );
+
     const where = {
       ...(req.user.role !== "admin" ? { createdBy: id } : {}),
       channel: queue as string,
@@ -217,7 +228,7 @@ export const getQueueJobs = async (
     const notifications = await Notification.findAll({
       where,
       order: [["createdAt", "DESC"]],
-      limit: 20,
+      // limit: 20,
       attributes: [
         "id",
         "displayId",
