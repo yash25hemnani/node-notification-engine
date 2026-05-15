@@ -579,8 +579,12 @@ export const deleteNotification = async (
         error: { code: "BAD_REQUEST", message: "Notification ID not provided" },
       });
 
+    // FIX: Scope deletion to the owner, unless the user is an admin
     const existingNotification = await Notification.findOne({
-      where: { id: notificationId },
+      where: {
+        id: notificationId,
+        ...(req.user.role !== "admin" ? { createdBy: req.user.id } : {}),
+      },
     });
 
     if (!existingNotification)
@@ -628,10 +632,11 @@ export const getQueueNotifications = async (
       });
 
     const where = {
-      createdBy: id,
+      ...(req.user.role !== "admin" ? { createdBy: id } : {}),
       channel: queue as string,
       ...(state && state !== "all" ? { status: state as string } : {}),
     };
+
 
     const notifications = await Notification.findAll({
       where,
@@ -678,8 +683,12 @@ export const getSingleNotification = async (
     const { id: userId } = req.user;
     const { notificationId } = req.params;
 
+    // FIX: Admins can look up any notification; non-admins are scoped to their own
     const notification = await Notification.findOne({
-      where: { id: notificationId, createdBy: userId },
+      where: {
+        id: notificationId,
+        ...(req.user.role !== "admin" ? { createdBy: userId } : {}),
+      },
       include: [
         {
           model: EmailNotificationDetail,

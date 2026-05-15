@@ -6,6 +6,7 @@ import {
 } from "../queue/processors/notification.processor";
 import { ApiResponse, AuthRequest } from "../types/api";
 import { unauthorized } from "../utils/api";
+import { logger } from "../utils/logger";
 
 // Store clients per user
 // Each map has userId as key and a set of that user's connections
@@ -186,75 +187,4 @@ export const dashboardStream = async (req: AuthRequest, res: Response) => {
       }
     }
   });
-};
-
-// Getting jobs for a queue
-export const getQueueJobs = async (
-  req: AuthRequest,
-  res: Response<ApiResponse>,
-) => {
-  try {
-    if (!req.user) return unauthorized(res);
-    const { id } = req.user;
-
-    const { queue, state } = req.query;
-
-    if (!queue)
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: "NO_QUEUE_SPECIFIED",
-          message: "Specify a queue to request data.",
-        },
-      });
-
-    console.log(
-      "Fetching jobs for queue:",
-      queue,
-      "with state:",
-      state,
-      "for user:",
-      id,
-      "with role:",
-      req.user.role,
-    );
-
-    const where = {
-      ...(req.user.role !== "admin" ? { createdBy: id } : {}),
-      channel: queue as string,
-      ...(state && state !== "all" ? { status: state as string } : {}),
-    };
-
-    const notifications = await Notification.findAll({
-      where,
-      order: [["createdAt", "DESC"]],
-      // limit: 20,
-      attributes: [
-        "id",
-        "displayId",
-        "channel",
-        "status",
-        "customerId",
-        "customerEmail",
-        "templateSlug",
-        "attemptsMade",
-        "failedReason",
-        "createdAt",
-      ],
-    });
-
-    return res.status(200).json({
-      success: true,
-      data: { jobs: notifications },
-    });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({
-      success: false,
-      error: {
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Unknown error occurred.",
-      },
-    });
-  }
 };
