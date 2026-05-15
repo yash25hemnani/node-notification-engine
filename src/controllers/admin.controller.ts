@@ -71,7 +71,7 @@ export const getSingleSubscription = async (
   try {
     if (!req.user) return unauthorized(res);
 
-    const { customerEmail } = req.params;
+    const { customerEmail } = req.query;
 
     const subscriptions = await BrowserSubscription.findAll({
       attributes: ["id", "customerEmail", "customerId", "endpoint"],
