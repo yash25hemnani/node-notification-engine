@@ -216,6 +216,7 @@ export const handleRefresh = async (
           id: token.user?.id,
           email: token.user?.email,
           username: token.user?.username,
+          role: token.user?.role,
         },
         accessToken: accessToken,
       },
