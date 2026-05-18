@@ -3,8 +3,11 @@ import {
   createEmailNotification,
   createPushNotification,
   deleteNotification,
+  getCustomerPushNotifications,
   getQueueNotifications,
   getSingleNotification,
+  markAllAsRead,
+  markAsRead,
   sendTestEmailNotification,
   sendTestPushNotification,
   uploadEmailAttachments,
@@ -15,7 +18,7 @@ import { prodDeleteGuardMiddleware } from "../middleware/prod.middleware";
 import { validate } from "../middleware/validate.middleware";
 import {
   notifyEmailSchema,
-  notifyPushSchema ,
+  notifyPushSchema,
   testEmailSchema,
   testPushSchema,
 } from "../schemas/notification.schema";
@@ -44,13 +47,18 @@ router.post(
   createEmailNotification,
 );
 
-
 router.post(
   "/notify/push",
   validate(notifyPushSchema),
   apiKeysMiddleware,
   createPushNotification,
 );
+
+router.get("/all", apiKeysMiddleware, getCustomerPushNotifications);
+
+router.patch("/mark-as-read", apiKeysMiddleware, markAsRead);
+
+router.patch("/mark-all-as-read", apiKeysMiddleware, markAllAsRead);
 
 router.post(
   "/test/email",

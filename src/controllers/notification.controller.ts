@@ -19,6 +19,7 @@ import {
   buildPaginatedResponse,
   getPaginationParams,
 } from "../utils/pagination";
+import { renderTemplate } from "../utils/template";
 
 export const uploadEmailAttachments = async (
   req: ApiKeyRequest,
@@ -324,6 +325,185 @@ export const createPushNotification = async (
       data: {
         message: "Push notifications queued",
         ids: notifications.map((n) => n.id),
+      },
+    });
+  } catch (error) {
+    logger.error(error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error occurred.",
+      },
+    });
+  }
+};
+
+export const getCustomerPushNotifications = async (
+  req: ApiKeyRequest,
+  res: Response<ApiResponse>,
+) => {
+  try {
+    if (!req.apiKey) return unauthorized(res);
+    const { page, limit, offset } = getPaginationParams(req.query);
+    const { customerEmail } = req.query;
+
+    if (!customerEmail)
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "NO_EMAIL_PROVIDED",
+          message: "Customer email not provided.",
+        },
+      });
+
+    const { count, rows: Notifications } = await Notification.findAndCountAll({
+      where: { customerEmail: customerEmail as string, channel: "push" },
+      attributes: ["id", "customerEmail", "templateSnapshot", "isRead", "data"],
+      order: [["createdAt", "DESC"]],
+      limit,
+      offset,
+    });
+
+    if (count === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { code: "NO_DATA_FOUND", message: "No data found." },
+      });
+    }
+
+    const mappedNotifications = Notifications.map((n) => {
+      const templateSnapshot = n.templateSnapshot as {
+        title: string;
+        body: string;
+      };
+
+      const isDataEmpty = Object.keys(n.data ?? {}).length === 0;
+
+      const renderedTitle = !isDataEmpty
+        ? renderTemplate(templateSnapshot.title, n.data)
+        : templateSnapshot.title;
+
+      const renderedBody = !isDataEmpty
+        ? renderTemplate(templateSnapshot.body, n.data)
+        : templateSnapshot.body;
+
+      return {
+        ...n,
+        renderedTitle,
+        renderedBody,
+      };
+    });
+
+    return res.status(200).json(
+      buildPaginatedResponse(mappedNotifications, count, {
+        page,
+        limit,
+        offset,
+      }),
+    );
+  } catch (error) {
+    logger.error(error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error occurred.",
+      },
+    });
+  }
+};
+
+export const markAsRead = async (
+  req: ApiKeyRequest,
+  res: Response<ApiResponse>,
+) => {
+  try {
+    if (!req.apiKey) return unauthorized(res);
+
+    const { customerEmail, notificationId } = req.body;
+
+    if (!customerEmail || !notificationId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "BAD_REQUEST",
+          message: "customerEmail and notificationId are required.",
+        },
+      });
+    }
+
+    const [updatedCount] = await Notification.update(
+      { isRead: true },
+      {
+        where: {
+          id: notificationId,
+          customerEmail,
+        },
+      },
+    );
+
+    if (!updatedCount) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Notification not found.",
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        message: "Notification marked as read.",
+      },
+    });
+  } catch (error) {
+    logger.error(error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error occurred.",
+      },
+    });
+  }
+};
+
+export const markAllAsRead = async (
+  req: ApiKeyRequest,
+  res: Response<ApiResponse>,
+) => {
+  try {
+    if (!req.apiKey) return unauthorized(res);
+
+    const { customerEmail } = req.body;
+
+    if (!customerEmail) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "BAD_REQUEST",
+          message: "customerEmail is required.",
+        },
+      });
+    }
+
+    const [updatedCount] = await Notification.update(
+      { isRead: true },
+      {
+        where: {
+          customerEmail,
+          isRead: false,
+        },
+      },
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        message: `${updatedCount} notifications marked as read.`,
       },
     });
   } catch (error) {

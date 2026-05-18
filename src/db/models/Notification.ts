@@ -20,6 +20,7 @@ interface NotificationAttributes {
   templateSnapshot: object;
   // Dynamic values merged into the template for this specific send
   data: object | null;
+  isRead: boolean;
   createdBy: string;
   status: NotificationStatus;
   attemptsMade: number | null;
@@ -36,6 +37,7 @@ interface NotificationCreationAttributes extends Optional<
   | "failedReason"
   | "jobId"
   | "idempotencyKey"
+  | "isRead"
 > {}
 
 export class Notification
@@ -53,6 +55,7 @@ export class Notification
   public templateSlug!: string;
   public templateSnapshot!: object;
   public data!: object | null;
+  public isRead!: boolean;
   public createdBy!: string;
   public status!: NotificationStatus;
   public attemptsMade!: number | null;
@@ -113,6 +116,11 @@ Notification.init(
     data: {
       type: DataTypes.JSONB,
       allowNull: true,
+    },
+    isRead: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     createdBy: {
       type: DataTypes.UUID,
