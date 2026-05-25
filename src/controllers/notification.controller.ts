@@ -345,6 +345,7 @@ export const getCustomerPushNotifications = async (
 ) => {
   try {
     if (!req.apiKey) return unauthorized(res);
+    console.log(req.apiKey)
     const { page, limit, offset } = getPaginationParams(req.query);
     const { customerEmail } = req.query;
 
