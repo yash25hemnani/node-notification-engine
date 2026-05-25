@@ -390,7 +390,7 @@ export const getCustomerPushNotifications = async (
         : templateSnapshot.body;
 
       return {
-        ...n,
+        ...n.get({ plain: true }),
         renderedTitle,
         renderedBody,
       };
